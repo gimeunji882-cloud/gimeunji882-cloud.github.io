@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<!-- v2 · 2026-11-27 · iOS 파일 미리보기(QuickLook) 대응 수정
-     · form 태그 제거 → 버튼을 눌러도 페이지가 새로고침되며 입력이 지워지지 않음
-     · localStorage/sessionStorage 접근을 safe*Storage 헬퍼로 감싸 SecurityError 차단
-     · 칩·예시·카드뽑기 버튼을 click + touchend 두 경로로 받아 iOS 탭 누락 방지
-     · 런타임 오류를 화면 하단 배너와 상태줄에 표시 -->
+<!-- v3 · 2026-11-27 · Gemini 무료 연동 + 타로 해설 프롬프트 고도화
+     · AI 제공자 선택(Google Gemini 무료 / OpenAI GPT 유료) + 제공자별 키·모델 저장
+     · Gemini generateContent 호출 — 2.5-flash 실패 시 2.0-flash 로 1회 자동 폴백, 그래도 실패하면 내장 엔진
+     · 해설 프롬프트 전면 개편 — 두괄식 결론, 사연 밀착, 위치별 차별화, 실전 지침(피할 것 1 · 할 것 2)
+     · v2 의 iOS 파일 미리보기(QuickLook) 대응 수정 포함 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -100,6 +100,19 @@
     padding:6px 12px;background:rgba(217,184,113,.07);white-space:nowrap;
   }
   .mode-badge.live{color:#bfead2;border-color:rgba(120,220,170,.32);background:rgba(60,160,120,.12)}
+  .mode-badge.gemini{color:#cfe3ff;border-color:rgba(120,170,255,.34);background:rgba(70,120,220,.14)}
+
+  .provider-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:6px}
+  .provider-opt{
+    display:flex;align-items:center;gap:8px;min-width:0;
+    padding:9px 11px;border:1px solid var(--line);border-radius:12px;
+    background:rgba(255,255,255,.02);cursor:pointer;font-size:12.5px;
+    transition:border-color .18s ease,background .18s ease;
+  }
+  .provider-opt input{margin:0;accent-color:var(--gold);flex:none}
+  .provider-opt .p-name{font-weight:500;color:var(--text);white-space:nowrap}
+  .provider-opt .p-tag{font-size:10.5px;color:var(--muted);margin-left:auto;white-space:nowrap}
+  .provider-opt.on{border-color:rgba(217,184,113,.55);background:rgba(217,184,113,.09)}
 
   .layout{
     position:relative;z-index:2;
@@ -446,6 +459,7 @@
     .brand p{font-size:10.5px}
     .panel{padding:17px;border-radius:15px}
     .row-2{grid-template-columns:1fr;gap:0}
+    .provider-row{grid-template-columns:1fr}
     .cards-row{gap:7px}
     .card-slot{width:31.5%}
     .card-name .ko{font-size:12px}
@@ -524,16 +538,48 @@
 
     <details class="settings" id="settingsPanel">
       <summary>
-        <span>⚙️ OpenAI API 연결 <span class="optional">(선택)</span></span>
+        <span>⚙️ AI 연결 설정 <span class="optional">(선택)</span></span>
         <span class="chev" aria-hidden="true">▾</span>
       </summary>
       <div class="settings-body">
-        <p class="hint">키가 없어도 <strong>내장 엔진</strong>으로 바로 해설이 나옵니다. 키를 넣으면 실제 GPT가 더 깊고 유연하게 풀어 씁니다.</p>
-        <label class="field" for="apiKey">
-          <span class="field-label">OpenAI API Key</span>
-          <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off" spellcheck="false">
-        </label>
-        <div class="row-2">
+        <p class="hint">키가 없어도 <strong>내장 엔진</strong>으로 바로 해설이 나옵니다. <strong>Gemini</strong>는 무료 키만 있으면 훨씬 깊고 단호한 해설이 나와요.</p>
+
+        <div class="field">
+          <span class="field-label">AI 제공자</span>
+          <div class="provider-row" role="radiogroup" aria-label="AI 제공자">
+            <label class="provider-opt on" id="providerGeminiLabel" for="providerGemini">
+              <input type="radio" id="providerGemini" name="aiProvider" value="gemini" checked>
+              <span class="p-name">Google Gemini</span>
+              <span class="p-tag">무료 추천</span>
+            </label>
+            <label class="provider-opt" id="providerOpenaiLabel" for="providerOpenai">
+              <input type="radio" id="providerOpenai" name="aiProvider" value="openai">
+              <span class="p-name">OpenAI GPT</span>
+              <span class="p-tag">유료 충전</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="geminiPanel">
+          <label class="field" for="geminiKey">
+            <span class="field-label">Gemini API Key</span>
+            <input type="password" id="geminiKey" placeholder="AIza..." autocomplete="off" spellcheck="false">
+          </label>
+          <label class="field" for="geminiModel">
+            <span class="field-label">모델</span>
+            <select id="geminiModel">
+              <option value="gemini-2.5-flash" selected>gemini-2.5-flash (추천)</option>
+              <option value="gemini-2.0-flash">gemini-2.0-flash (안정판)</option>
+            </select>
+          </label>
+          <p class="hint tiny">무료 키 발급: <strong>aistudio.google.com</strong> → Get API key. 2.5-flash가 막히면 2.0-flash로 한 번 더 자동으로 시도합니다.</p>
+        </div>
+
+        <div id="openaiPanel" hidden>
+          <label class="field" for="apiKey">
+            <span class="field-label">OpenAI API Key</span>
+            <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off" spellcheck="false">
+          </label>
           <label class="field" for="model">
             <span class="field-label">모델</span>
             <select id="model">
@@ -541,16 +587,18 @@
               <option value="gpt-4o">gpt-4o (고품질)</option>
             </select>
           </label>
-          <label class="check" for="saveKey">
-            <input type="checkbox" id="saveKey">
-            <span>이 브라우저에 키 저장</span>
-          </label>
+          <p class="hint tiny">OpenAI는 선불 충전이 필요합니다. 호출한 만큼만 과금됩니다.</p>
         </div>
+
+        <label class="check" for="saveKey">
+          <input type="checkbox" id="saveKey">
+          <span>이 브라우저에 키 저장</span>
+        </label>
         <div class="settings-actions">
           <button type="button" class="btn ghost small" id="saveSettings">설정 저장</button>
           <button type="button" class="btn ghost small" id="clearKey">키 삭제</button>
         </div>
-        <p class="hint tiny">🔒 키는 별도 서버 없이 이 브라우저에서 OpenAI로 바로 전송됩니다. 고객에게 배포하는 사본에는 절대 키를 넣지 마세요.</p>
+        <p class="hint tiny">🔒 키는 별도 서버 없이 이 브라우저에서 Google·OpenAI로 바로 전송됩니다. 고객에게 배포하는 사본에는 절대 키를 넣지 마세요.</p>
       </div>
     </details>
 
@@ -643,7 +691,7 @@
 </main>
 
 <footer class="foot">
-  AI 타로 리딩 · 타로 부업 상담 자동화 초안 &nbsp;|&nbsp; v2 (2026-11-27 · iOS 미리보기 대응) &nbsp;|&nbsp; 이 리딩은 자기성찰과 오락을 위한 참고 자료이며, 의료·법률·투자 판단을 대신하지 않습니다.
+  AI 타로 리딩 · 타로 부업 상담 자동화 &nbsp;|&nbsp; v3 (2026-11-27 · Gemini 무료 연동 · 해설 프롬프트 고도화) &nbsp;|&nbsp; 이 리딩은 자기성찰과 오락을 위한 참고 자료이며, 의료·법률·투자 판단을 대신하지 않습니다.
 </footer>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -1067,7 +1115,10 @@ const AREAS = {
     actions:['오늘 바로 연락하기보다, 상대가 편안하게 답할 수 있는 짧은 안부부터 건네 보세요.',
              '내가 원하는 관계의 모습을 세 줄로 적어 보세요. 기준이 생기면 흔들림이 줄어듭니다.',
              '상대의 반응을 해석하려 애쓰지 말고, 내가 할 수 있는 표현 하나에 집중하세요.',
-             '상황을 잘 아는 친구에게 한 번만 말해 보세요. 혼자 상상하는 것보다 훨씬 정확해집니다.']
+             '상황을 잘 아는 친구에게 한 번만 말해 보세요. 혼자 상상하는 것보다 훨씬 정확해집니다.'],
+    avoids:['연락을 여러 번 보내거나 답장 시간을 재는 식으로 상대를 계속 확인하는 일.',
+            '확신이 서기 전에 관계의 정의(만남·결혼)를 먼저 꺼내는 일.',
+            '지인에게 대신 물어보거나 SNS로 상대 근황을 캐는 일.']
   },
   work: {
     label:'직장·이직', emoji:'💼',
@@ -1077,7 +1128,10 @@ const AREAS = {
     actions:['이번 주 안에 이력서나 포트폴리오에서 한 줄만 더 다듬어 두세요.',
              '바꾸고 싶은 점을 상사에게 감정 없이 한 문장으로 정리해 보세요.',
              '원하는 자리의 공고 3개를 저장해 두고 요구 역량을 비교해 보세요.',
-             '퇴근 후 30분을 내 일을 준비하는 시간으로 고정해 보세요.']
+             '퇴근 후 30분을 내 일을 준비하는 시간으로 고정해 보세요.'],
+    avoids:['감정이 올라온 상태에서 사직서나 전보 요청을 먼저 내는 일.',
+            '준비 없이 공고만 보고 지원서부터 뿌리는 일.',
+            '회사·상사 불만을 동료에게 구체적으로 옮기는 일.']
   },
   money: {
     label:'금전·사업', emoji:'🪙',
@@ -1087,7 +1141,10 @@ const AREAS = {
     actions:['이번 달 고정지출을 한 번에 적어 보고, 줄일 항목 하나를 정하세요.',
              '새 수입원은 크게 벌이기보다 작게 검증하는 방식으로 시작하세요.',
              '큰 지출 전에 48시간을 두는 규칙을 만들어 두세요.',
-             '돈이 새는 곳을 막는 것만으로도 한 달에 몇만 원이 남습니다.']
+             '돈이 새는 곳을 막는 것만으로도 한 달에 몇만 원이 남습니다.'],
+    avoids:['수익이 검증되기 전에 재고·장비에 큰돈을 넣는 일.',
+            '빌린 돈이나 카드 할부로 시작 자금을 만드는 일.',
+            '지인에게 수익이나 원금을 보장하는 말을 하는 일.']
   },
   relation: {
     label:'인간관계', emoji:'🤝',
@@ -1097,7 +1154,10 @@ const AREAS = {
     actions:['서운했던 일은 감정 대신 상황-행동-부탁 순서로 말해 보세요.',
              '연락이 뜸했던 사람에게 짧은 안부를 먼저 전해 보세요.',
              '모든 사람과 가까워지려 하지 말고, 에너지를 나눌 사람을 골라 보세요.',
-             '거절해야 할 일은 미루지 말고 한 번에 분명하게 말하세요.']
+             '거절해야 할 일은 미루지 말고 한 번에 분명하게 말하세요.'],
+    avoids:['서운한 마음을 미뤄 두다가 한 번에 폭발시키는 일.',
+            '당사자가 아닌 제3자에게 그 사람 이야기를 옮기는 일.',
+            '분위기를 맞추려고 원하지 않는 약속을 잡는 일.']
   },
   general: {
     label:'종합운', emoji:'🌌',
@@ -1107,7 +1167,10 @@ const AREAS = {
     actions:['이번 주에 정리하고 싶은 것 하나를 정해 작게 시작해 보세요.',
              '결정을 미루고 있는 일이 있다면 기한을 먼저 정하세요.',
              '몸을 움직이는 시간 20분이 생각보다 판단을 맑게 합니다.',
-             '하루 끝에 잘된 일 세 가지를 적어 보세요. 흐름을 보는 눈이 달라집니다.']
+             '하루 끝에 잘된 일 세 가지를 적어 보세요. 흐름을 보는 눈이 달라집니다.'],
+    avoids:['오늘 결론낼 수 없는 일을 억지로 오늘 결론내는 일.',
+            '잠과 식사를 미루며 같은 생각만 반복하는 일.',
+            '결정을 주변에 대신 내달라고 미루는 일.']
   }
 };
 
@@ -1314,6 +1377,24 @@ function buildReading(state){
   function lens(c){ return c.card[c.reversed ? 'rev' : 'up'][lensKey] || c.card[c.reversed ? 'rev' : 'up'].body; }
   function keys(c){ return c.card[c.reversed ? 'rev' : 'up'].keys; }
 
+  /* --- 두괄식 결론: 긍정 / 주의 / 보류 --- */
+  let verdict, verdictWhy;
+  if(n === 1){
+    verdict = uplift > 0 ? '긍정' : '보류';
+    verdictWhy = uplift > 0
+      ? '카드가 정방향으로 서 있어요. 지금 방향을 크게 의심하지 않아도 됩니다. 미루면 흐름이 식습니다.'
+      : '카드가 역방향이라 지금 그대로 밀면 같은 자리를 맴돌아요. 조건 하나를 바꾸기 전에는 움직이지 않는 편이 나아요.';
+  } else if(uplift > revCount){
+    verdict = '긍정';
+    verdictWhy = '정방향 ' + uplift + '장, 역방향 ' + revCount + '장. 열린 문이 더 많은 배열이라, 질문하신 일은 진행 쪽에 무게가 실려 있어요.';
+  } else if(revCount > uplift){
+    verdict = '주의';
+    verdictWhy = '역방향 ' + revCount + '장이 먼저 서 있어요. 지금 속도로 밀면 같은 자리를 다시 돕니다. 순서를 바꾸는 게 먼저예요.';
+  } else {
+    verdict = '보류';
+    verdictWhy = '정방향과 역방향이 반반으로 놓였어요. 결론은 카드가 아니라 다음 한 번의 행동이 정합니다.';
+  }
+
   /* --- 카드별 --- */
   const notes = state.cards.map(function(c, i){
     const pos = spread.positions[i];
@@ -1403,29 +1484,26 @@ function buildReading(state){
     synth.push(name + '님은 생년월일 기준으로 ' + state.lifePath + '번의 기운(' + LIFE_PATH[state.lifePath] + ')을 타고났어요. 이 기운은 카드가 말하는 ' + josa("'" + focusKeys[0] + "'", 'eul') + ' 현실로 옮기는 방식에도 드러납니다.');
   }
 
-  /* --- 조언 --- */
-  const advice = [];
-  const adviceCard = (state.spread === 'csr') ? state.cards[1] : focus;
-  advice.push(adviceCard.card[adviceCard.reversed ? 'rev' : 'up'].advice);
+  /* --- 실전 지침: ❌ 지금 피할 것 1 + ✅ 지금 할 것 2 --- */
+  const avoid = pickBy(rng, area.avoids);
+  const actions2 = [];
   const areaActions = area.actions.slice();
-  while(areaActions.length){
+  while(areaActions.length && actions2.length < 2){
     const idx = Math.floor(rng() * areaActions.length);
     const a = areaActions.splice(idx, 1)[0];
-    if(advice.indexOf(a) === -1) advice.push(a);
-    if(advice.length >= 3) break;
+    if(actions2.indexOf(a) === -1) actions2.push(a);
   }
-  const revCard = state.cards.filter(function(c){ return c.reversed; })[0];
-  if(advice.length < 3 && revCard){
-    const a = revCard.card.rev.advice;
-    if(advice.indexOf(a) === -1) advice.push(a);
-  }
+  const adviceCard = (state.spread === 'csr') ? state.cards[1] : focus;
+  const cardAdvice = adviceCard.card[adviceCard.reversed ? 'rev' : 'up'].advice;
+  if(actions2.length >= 2 && actions2.indexOf(cardAdvice) === -1) actions2[1] = cardAdvice;
+  const advice = [avoid].concat(actions2);
 
   /* --- 마무리 --- */
   const closes = [
-    name + '님의 카드는 정답보다 방향을 말해 주고 있어요. 오늘의 작은 선택 하나가 다음 카드를 바꿉니다.',
-    '카드는 미래를 정해 두지 않아요. 다만 지금 어디에 마음을 두면 좋을지는 알려줍니다. ' + name + '님의 속도대로 가셔도 괜찮아요.',
-    '이 리딩이 마음의 정리가 되는 하루가 되길 바랄게요. ' + name + '님은 이미 충분히 잘 해내고 있어요.',
-    '좋은 흐름은 서두르지 않아도 옵니다. ' + name + '님이 편안해지는 쪽을 고르면 그게 답이에요.'
+    name + '님은 이미 답을 알고 계세요. 지금 필요한 건 확신이 아니라 그 답대로 해보는 하루입니다.',
+    '카드는 방향만 말해 줬어요. 위의 행동 두 가지를 이번 주 안에 해보면 다음 카드는 달라집니다.',
+    '결정은 미루면 대신 시간이 내려 줍니다. ' + name + '님이 고르는 쪽으로 기울여 보세요.',
+    '이 리딩은 판단을 돕는 참고이고, 마지막 결정은 ' + name + '님 몫입니다. 오늘 하나만 실행해 보세요.'
   ];
   const closing = pickBy(rng, closes);
 
@@ -1435,13 +1513,11 @@ function buildReading(state){
   const reply = [];
   reply.push('🔮 ' + name + '님의 ' + area.label + ' 타로 리딩');
   reply.push('');
-  reply.push('안녕하세요, ' + name + '님. 보내주신 사연을 읽고 ' + spread.label + '로 카드를 펼쳐봤어요.');
-  if(state.topics.length) reply.push('\'' + state.topics[0].topic + '\'에 대한 마음이 크게 담겨 있어서, 그 부분을 중심으로 읽었습니다.');
+  reply.push('📌 결론 — [' + verdict + ']');
+  reply.push(verdictWhy);
   reply.push('');
-  reply.push('📌 오늘의 한 줄');
-  reply.push('지금 흐름은 \'' + focusKeys[0] + '\' 쪽에 무게가 실려 있어요. ' +
-             (focus.reversed ? '카드가 역방향이라, 겉으로 밀어붙이기보다 안쪽을 정리할 때 풀립니다.'
-                             : '카드가 정방향이라, 지금의 방향을 크게 의심하지 않아도 됩니다.'));
+  reply.push('보내주신 사연을 읽고 ' + spread.label + '로 카드를 펼쳤어요.' +
+             (state.topics.length ? ' \'' + state.topics[0].topic + '\'에 대한 마음이 크게 담겨 있어서, 그 부분을 중심으로 읽었습니다.' : ''));
   reply.push('');
   reply.push('🃏 뽑힌 카드');
   notes.forEach(function(nt, i){
@@ -1457,8 +1533,10 @@ function buildReading(state){
   reply.push('✨ 종합 리딩');
   synth.forEach(function(line){ reply.push(line); });
   reply.push('');
-  reply.push('💌 지금 해보시면 좋은 것');
-  advice.forEach(function(a, i){ reply.push((i+1) + '. ' + a); });
+  reply.push('💌 실전 지침');
+  reply.push('❌ 지금 피할 것 — ' + avoid);
+  reply.push('✅ 지금 할 것');
+  actions2.forEach(function(a, i){ reply.push((i+1) + '. ' + a); });
   reply.push('');
   reply.push('🌙 ' + closing);
   reply.push('');
@@ -1469,54 +1547,109 @@ function buildReading(state){
     areaLabel: area.label, areaEmoji: area.emoji,
     spreadLabel: spread.label,
     notes: notes, flow: flowLines, synthesis: synth, advice: advice, closing: closing,
+    verdict: verdict, verdictWhy: verdictWhy, avoid: avoid, actions2: actions2,
     uplift: uplift, revCount: revCount, topic: state.topics.length ? state.topics[0].topic : '',
     replyText: reply.join('\n')
   };
 }
 
 /* ---------- 프롬프트 ---------- */
+/* 스프레드 위치별 역할 — 카드마다 다른 질문에 답하게 만든다 */
+const SPREAD_ROLE = {
+  one: ['이 한 장이 질문의 답 전체입니다. 다른 각도로 얼버무리지 말고 이 카드 하나로 결론을 냅니다.'],
+  ppf: [
+    '과거 — 이미 벌어진 사실과 그때의 감정. 지금 상황을 만든 원인을 짚습니다.',
+    '현재 — 지금 실제로 작용하는 힘과 걸림돌. 고객이 지금 하는 행동 중 무엇이 흐름을 막는지 말합니다.',
+    '미래 — 지금의 선택이 유지될 때 도달하는 지점. 그대로 가면 어떻게 되는지, 무엇을 바꾸면 달라지는지.'
+  ],
+  csr: [
+    '현재 상황 — 상대나 환경이 아니라 고객이 놓인 자리를 사실대로 비춥니다.',
+    '조언 — 카드가 내리는 처방. 이번 리딩에서 가장 실행적인 부분입니다.',
+    '결과 — 조언을 따랐을 때와 따르지 않았을 때의 갈림길.'
+  ]
+};
+
 function buildPrompt(state){
   const area = AREAS[state.area];
   const spread = SPREADS[state.spread];
-  const lines = [];
-  lines.push('[고객 정보]');
-  lines.push('이름: ' + state.name);
-  if(state.birth) lines.push('생년월일: ' + state.birth);
-  if(state.gender) lines.push('성별: ' + state.gender);
-  lines.push('상담 분야: ' + area.label);
-  lines.push('스프레드: ' + spread.label);
-  if(state.question) lines.push('질문/사연: ' + state.question);
-  else lines.push('질문/사연: (따로 적지 않음 — 분야 중심으로 종합 해설)');
-  lines.push('');
-  lines.push('[뽑힌 카드]');
+  const roles = SPREAD_ROLE[state.spread] || SPREAD_ROLE.ppf;
+  const topics = (state.topics || []).slice(0, 2);
+  const name = state.name;
+
+  const user = [];
+  user.push('[고객]');
+  user.push('이름: ' + name + (state.gender ? ' (' + state.gender + ')' : ''));
+  if(state.birth) user.push('생년월일: ' + state.birth);
+  user.push('상담 분야: ' + area.label);
+  user.push('스프레드: ' + spread.label);
+  user.push('사연: ' + (state.question
+    ? '「' + state.question + '」'
+    : '(사연 없음 — 분야의 전형적인 고민으로 읽되, 일반론 대신 카드에서만 근거를 뽑습니다)'));
+  if(topics.length){
+    user.push('사연에서 읽힌 핵심 주제: ' + topics.map(function(t){ return t.topic; }).join(', '));
+    topics.forEach(function(t){ user.push('- ' + t.topic + ': ' + t.line); });
+  }
+  user.push('');
+  user.push('[뽑힌 카드 · 위치의 역할]');
   state.cards.forEach(function(c, i){
-    const pos = spread.positions[i];
     const o = c.reversed ? 'rev' : 'up';
-    lines.push((i+1) + '. ' + pos.label + ' — ' + c.card.ko + ' (' + (c.reversed ? '역방향' : '정방향') + ', ' + c.card.en + ') / 핵심 키워드: ' + c.card[o].keys.join(', '));
+    const pos = spread.positions[i];
+    user.push((i+1) + '. ' + pos.label + ' — ' + c.card.ko + ' (' + (c.reversed ? '역방향' : '정방향') + ')');
+    user.push('   · 카드 의미: ' + c.card[o].body);
+    user.push('   · 상징 키워드: ' + c.card[o].keys.join(', '));
+    user.push('   · 이 위치에서 답할 것: ' + (roles[i] || pos.note));
   });
-  lines.push('');
-  lines.push('[요청]');
-  lines.push('아래 형식으로 작성해 주세요.');
-  lines.push('1) 한 줄 총평');
-  lines.push('2) 카드별 해설 — 위치별로 2~3문장, 카드의 상징과 정/역방향을 근거로');
-  lines.push('3) 종합 리딩 — 카드들을 하나의 이야기로 엮어서 3~4문장');
-  lines.push('4) 지금 해보면 좋은 것 — 현실적으로 실천 가능한 3가지');
-  lines.push('5) 따뜻한 마무리 한 문장');
+  user.push('');
+  user.push('[작성 형식 — 번호와 순서를 그대로 지킵니다]');
+  user.push('1) 결론');
+  user.push('   첫 줄은 반드시 "[긍정]" 또는 "[주의]" 또는 "[보류]"로 시작합니다. 바로 다음 줄에 그렇게 본 이유를 사연과 카드로 한 문장.');
+  user.push('2) 카드별 해설');
+  user.push('   카드마다 소제목 한 줄을 따로 씁니다. 형식: "🃏 위치 이름 · 카드명 (정방향/역방향)"');
+  user.push('   그 아래 2~3문장. 사연의 표현을 한 번 그대로 인용해 이 카드와 연결하고, 카드 상징 한 가지를 근거로 씁니다.');
+  user.push('3) 종합');
+  user.push('   세 카드가 왜 위 결론으로 모이는지 3~4문장. ' + name + '님이 스스로 놓치고 있는 지점 하나를 짚습니다.');
+  user.push('4) 실전 행동 지침');
+  user.push('   "❌ 지금 피할 것: " 1가지 — 오늘 당장 멈춰야 할 행동이나 말. 사연의 상황에 맞게 구체적으로.');
+  user.push('   "✅ 지금 할 것: " 2가지 — 이번 주 안에 실제로 할 수 있는 행동. 연락·대화라면 실제로 보낼 문장 예시를 따옴표로 넣습니다.');
+  user.push('5) 마무리');
+  user.push('   단호하지만 따뜻한 한 문장. 마지막 줄에 "※ 본 리딩은 참고용입니다."');
+  user.push('');
+  user.push('[자체 점검] 결론이 첫 두 줄에 있는가 / 사연 단어를 직접 인용했는가 / 카드마다 다른 통찰을 줬는가 / 행동이 구체적인가. 하나라도 아니면 다시 씁니다.');
 
   const system = [
-    '당신은 20년 경력의 타로 마스터입니다. 한국어로 따뜻하고 구체적인 상담 리딩을 씁니다.',
-    '규칙:',
-    '- 정중한 존댓말(~요, ~습니다)로 쓰고, 고객을 "' + state.name + '님"이라고 부릅니다.',
-    '- 뽑힌 카드와 정/역방향을 모두 근거로 삼고, 카드의 상징을 이야기 속에 자연스럽게 녹입니다.',
-    '- 단정적인 미래 예언, 협박, 공포 조장은 하지 않습니다. 선택지는 고객에게 남겨 둡니다.',
-    '- 의료·법률·투자에 대한 확답은 피하고, 필요하면 전문가 상담을 권합니다.',
-    '- 분량은 700~1000자, 문단은 4~6개로 나눕니다.',
-    '- 이모지는 섹션 제목에만 2~4개 사용합니다.',
-    '- 마지막에 "본 리딩은 참고용"임을 한 줄로 밝힙니다.'
+    '당신은 20년 차 타로 상담가입니다. 카톡·DM으로 유료 상담을 진행하고, 고객은 위로보다 판단을 원합니다. 아래 규칙을 어기면 이 상담은 실패입니다.',
+    '',
+    '[결론]',
+    '- 첫 문단 첫 줄은 반드시 [긍정] 또는 [주의] 또는 [보류]로 시작하고, 바로 다음 줄에 이유를 한 문장 씁니다.',
+    '- 인사말이나 "사연을 읽어보니", "카드를 펼쳐봤어요" 같은 서론은 쓰지 않습니다. 결론이 먼저입니다.',
+    '- 금지 문장: "상황에 따라 다릅니다", "노력하면 좋아질 거예요", "마음먹기 나름입니다", "시간이 약입니다", "긍정적으로 생각해 보세요", "서두르지 마세요".',
+    '- 조건을 나열해 결론을 흐리지 않습니다. 방향을 하나 정하고, 조건은 그 방향을 지키는 방법으로 씁니다.',
+    '',
+    '[사연 밀착]',
+    '- 고객 사연에 나온 표현을 그대로 인용합니다(예: \'3개월\', \'답이 짧아짐\', \'먼저 연락\'). 인용한 표현을 뽑힌 카드의 상징과 1:1로 연결합니다.',
+    '- 사연에 없는 일반론, 어떤 고객에게나 쓸 수 있는 문장은 쓰지 않습니다.',
+    '- 고객이 묻지 않은 주제(건강·투자 등)로 해석을 넓히지 않습니다.',
+    '',
+    '[카드]',
+    '- 카드마다 위치의 역할이 다릅니다. 위치별로 다른 질문에 답하고, 같은 문장 구조나 같은 조언을 반복하지 않습니다.',
+    '- 카드 이름과 정/역방향, 그 카드의 상징 한 가지를 근거로 반드시 넣습니다.',
+    '- 카드에 없는 내용을 카드 근거인 것처럼 말하지 않습니다.',
+    '',
+    '[태도]',
+    '- 단정적 미래 예언, 협박, 불안 조장, "반드시/절대" 식의 확정은 하지 않습니다. 대신 \'지금 이렇게 하면 어느 쪽으로 기울는지\'를 단정적으로 씁니다.',
+    '- 의료·법률·투자 판단은 전문가에게 확인하라는 한 줄만 쓰고 해석하지 않습니다.',
+    '- 정중한 존댓말. 고객을 "' + name + '님"으로 부릅니다.',
+    '',
+    '[형식]',
+    '- 소제목은 1)~5) 번호를 그대로 사용합니다.',
+    '- 이모지는 소제목에만 1~2개. 본문에는 쓰지 않습니다.',
+    '- 마크다운 제목(#), 글머리 기호(-, *)는 쓰지 않습니다. 강조는 **굵게**만.',
+    '- 문단은 2~3문장으로 짧게 끊고, 전체 900~1300자.',
+    '- 마지막 줄에 "※ 본 리딩은 참고용입니다."를 넣습니다.'
   ].join('\n');
 
-  const user = lines.join('\n');
-  return { system: system, user: user, full: '[SYSTEM]\n' + system + '\n\n[USER]\n' + user };
+  const userText = user.join('\n');
+  return { system: system, user: userText, full: '[SYSTEM]\n' + system + '\n\n[USER]\n' + userText };
 }
 
 /* ---------- 결과 HTML ---------- */
@@ -1548,6 +1681,7 @@ function buildResultHTML(state, reading){
   parts.push('</div>');
 
   parts.push('<article class="reading-body">');
+  parts.push('<section class="block"><h3>🎯 결론 — ' + escHTML(reading.verdict) + '</h3><p>' + escHTML(reading.verdictWhy) + '</p></section>');
   parts.push('<section class="block"><h3>🌙 지금의 흐름</h3>');
   reading.flow.forEach(function(p){ parts.push('<p>' + p + '</p>'); });
   parts.push('</section>');
@@ -1565,8 +1699,9 @@ function buildResultHTML(state, reading){
   reading.synthesis.forEach(function(p){ parts.push('<p>' + escHTML(p) + '</p>'); });
   parts.push('</section>');
 
-  parts.push('<section class="block"><h3>💌 지금 해보시면 좋은 것</h3><ul class="advice-list">');
-  reading.advice.forEach(function(a, i){
+  parts.push('<section class="block"><h3>💌 실전 지침</h3><ul class="advice-list">');
+  parts.push('<li><span class="no">✕</span><span>' + escHTML(reading.avoid) + '</span></li>');
+  reading.actions2.forEach(function(a, i){
     parts.push('<li><span class="no">' + String(i+1).padStart(2,'0') + '</span><span>' + escHTML(a) + '</span></li>');
   });
   parts.push('</ul></section>');
@@ -1607,7 +1742,8 @@ function splitAIText(text){
   return out;
 }
 
-function buildAIResultHTML(state, reading, aiText, metaNote){
+function buildAIResultHTML(state, reading, aiText, metaNote, aiLabel){
+  const label = aiLabel || 'AI';
   const parts = [];
   parts.push('<div class="reading-head">');
   parts.push('  <p class="eyebrow">AI Reading · ' + escHTML(reading.dateStr) + '</p>');
@@ -1615,7 +1751,7 @@ function buildAIResultHTML(state, reading, aiText, metaNote){
   parts.push('  <div class="meta-chips">' +
              '<span>' + escHTML(reading.areaEmoji) + ' ' + escHTML(reading.areaLabel) + '</span>' +
              '<span>🌙 ' + escHTML(reading.spreadLabel) + '</span>' +
-             '<span>🤖 OpenAI 생성</span>' +
+             '<span>✨ ' + escHTML(label) + ' 생성</span>' +
              '</div>');
   parts.push('</div>');
 
@@ -1856,6 +1992,11 @@ function closestIn(node, sel){
 
   var LS_KEY = 'aitarot_api_key';
   var LS_MODEL = 'aitarot_model';
+  var LS_GEMINI_KEY = 'aitarot_gemini_key';
+  var LS_GEMINI_MODEL = 'aitarot_gemini_model';
+  var LS_PROVIDER = 'aitarot_provider';
+  var DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+  var DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
 
   var el = {};
   var current = null;   // { state, reading, mode, aiText }
@@ -1904,6 +2045,14 @@ function closestIn(node, sel){
       badge: $('modeBadge'),
       apiKey: $('apiKey'),
       model: $('model'),
+      geminiKey: $('geminiKey'),
+      geminiModel: $('geminiModel'),
+      geminiPanel: $('geminiPanel'),
+      openaiPanel: $('openaiPanel'),
+      providerGemini: $('providerGemini'),
+      providerOpenai: $('providerOpenai'),
+      providerGeminiLabel: $('providerGeminiLabel'),
+      providerOpenaiLabel: $('providerOpenaiLabel'),
       saveKey: $('saveKey'),
       saveSettings: $('saveSettings'),
       clearKey: $('clearKey'),
@@ -1981,65 +2130,134 @@ function closestIn(node, sel){
     };
   }
 
+  /* ---------- AI 제공자 ---------- */
+  function currentProvider(){
+    try{
+      if(el.providerOpenai && el.providerOpenai.checked) return 'openai';
+      if(el.providerGemini && el.providerGemini.checked) return 'gemini';
+    }catch(e){}
+    return 'gemini';
+  }
+
+  function geminiKeyValue(){ return (el.geminiKey && el.geminiKey.value ? el.geminiKey.value : '').replace(/^\s+|\s+$/g, ''); }
+  function geminiModelValue(){ return (el.geminiModel && el.geminiModel.value) || DEFAULT_GEMINI_MODEL; }
+  function openaiKeyValue(){ return (el.apiKey && el.apiKey.value ? el.apiKey.value : '').replace(/^\s+|\s+$/g, ''); }
+  function openaiModelValue(){ return (el.model && el.model.value) || DEFAULT_OPENAI_MODEL; }
+  function activeKey(){ return currentProvider() === 'openai' ? openaiKeyValue() : geminiKeyValue(); }
+
+  function syncProviderUI(){
+    var p = currentProvider();
+    try{
+      if(el.geminiPanel) el.geminiPanel.hidden = (p !== 'gemini');
+      if(el.openaiPanel) el.openaiPanel.hidden = (p !== 'openai');
+      if(el.providerGeminiLabel && el.providerGeminiLabel.classList){
+        if(p === 'gemini') el.providerGeminiLabel.classList.add('on');
+        else el.providerGeminiLabel.classList.remove('on');
+      }
+      if(el.providerOpenaiLabel && el.providerOpenaiLabel.classList){
+        if(p === 'openai') el.providerOpenaiLabel.classList.add('on');
+        else el.providerOpenaiLabel.classList.remove('on');
+      }
+    }catch(e){}
+    updateBadge();
+  }
+
+  function setProvider(p){
+    var target = (p === 'openai') ? 'openai' : 'gemini';
+    try{
+      if(el.providerGemini) el.providerGemini.checked = (target === 'gemini');
+      if(el.providerOpenai) el.providerOpenai.checked = (target === 'openai');
+    }catch(e){}
+    syncProviderUI();
+  }
+
   /* ---------- 설정 ---------- */
   function updateBadge(){
     if(!el.badge) return;
     try{
-      var key = (el.apiKey && el.apiKey.value ? el.apiKey.value : '').trim();
+      var p = currentProvider();
+      var key = activeKey();
       if(key){
-        el.badge.textContent = '🤖 GPT 연결 · ' + ((el.model && el.model.value) || 'gpt-4o-mini');
+        el.badge.textContent = (p === 'openai' ? '🤖 GPT 연결 · ' : '✨ Gemini 연결 · ') +
+                               (p === 'openai' ? openaiModelValue() : geminiModelValue());
         el.badge.classList.add('live');
+        if(p === 'gemini') el.badge.classList.add('gemini');
+        else el.badge.classList.remove('gemini');
       }else{
         el.badge.textContent = '내장 엔진 모드';
         el.badge.classList.remove('live');
+        el.badge.classList.remove('gemini');
       }
     }catch(e){}
   }
 
   function loadSettings(){
-    var savedKey = safeGetStorage(LS_KEY, '');
-    var savedModel = safeGetStorage(LS_MODEL, '');
+    var provider = safeGetStorage(LS_PROVIDER, 'gemini');
+    var gKey = safeGetStorage(LS_GEMINI_KEY, '');
+    var gModel = safeGetStorage(LS_GEMINI_MODEL, '');
+    var oKey = safeGetStorage(LS_KEY, '');
+    var oModel = safeGetStorage(LS_MODEL, '');
     try{
-      if(savedKey && el.apiKey){ el.apiKey.value = savedKey; if(el.saveKey) el.saveKey.checked = true; }
-      if(savedModel && el.model){ el.model.value = savedModel; }
+      if(gKey && el.geminiKey) el.geminiKey.value = gKey;
+      if(gModel && el.geminiModel) el.geminiModel.value = gModel;
+      if(oKey && el.apiKey) el.apiKey.value = oKey;
+      if(oModel && el.model) el.model.value = oModel;
     }catch(e){}
-    updateBadge();
+    setProvider(provider === 'openai' ? 'openai' : 'gemini');
+    try{
+      if(el.saveKey) el.saveKey.checked = !!(provider === 'openai' ? oKey : gKey);
+    }catch(e){}
   }
 
   function saveSettings(){
-    var key = (el.apiKey && el.apiKey.value ? el.apiKey.value : '').trim();
-    var model = (el.model && el.model.value) || 'gpt-4o-mini';
+    var p = currentProvider();
+    var key = activeKey();
+    var model = p === 'openai' ? openaiModelValue() : geminiModelValue();
+    var keySlot = p === 'openai' ? LS_KEY : LS_GEMINI_KEY;
+    var modelSlot = p === 'openai' ? LS_MODEL : LS_GEMINI_MODEL;
     var persisted = true;
     try{
       if(el.saveKey && el.saveKey.checked && key){
-        var ok1 = safeSetStorage(LS_KEY, key);
-        var ok2 = safeSetStorage(LS_MODEL, model);
-        persisted = !!(ok1 && ok2);
+        var ok1 = safeSetStorage(keySlot, key);
+        var ok2 = safeSetStorage(modelSlot, model);
+        var ok3 = safeSetStorage(LS_PROVIDER, p);
+        persisted = !!(ok1 && ok2 && ok3);
         toast(persisted
           ? '키를 이 브라우저에 저장했어요'
           : '이 미리보기에서는 저장이 막혀 있어요. 이 화면에서만 유지됩니다');
       }else{
-        safeRemoveStorage(LS_KEY);
-        safeRemoveStorage(LS_MODEL);
-        toast(key ? '키는 이번 세션에만 사용합니다' : '저장된 키를 비웠어요');
+        if(el.saveKey && el.saveKey.checked){
+          /* 저장 체크는 했는데 키가 비었으면 이 제공자의 저장값만 지운다 */
+          safeRemoveStorage(keySlot);
+          safeRemoveStorage(modelSlot);
+        }
+        safeSetStorage(LS_PROVIDER, p);
+        toast(key ? '키는 이번 화면에서만 사용합니다' : '저장된 키를 비웠어요');
       }
     }catch(e){
       toast('이 브라우저에서는 키 저장이 제한돼요');
     }
     updateBadge();
-    if(key) setStatus('GPT 모드로 해설을 생성합니다. (' + model + ')', 'ok');
+    if(key) setStatus((p === 'openai' ? 'GPT' : 'Gemini') + ' 모드로 해설을 생성합니다. (' + model + ')', 'ok');
     else setStatus('내장 엔진 모드로 해설을 생성합니다.', '');
   }
 
   function clearKey(){
+    var p = currentProvider();
     try{
-      if(el.apiKey) el.apiKey.value = '';
+      if(p === 'openai'){
+        if(el.apiKey) el.apiKey.value = '';
+        safeRemoveStorage(LS_KEY);
+        safeRemoveStorage(LS_MODEL);
+      }else{
+        if(el.geminiKey) el.geminiKey.value = '';
+        safeRemoveStorage(LS_GEMINI_KEY);
+        safeRemoveStorage(LS_GEMINI_MODEL);
+      }
       if(el.saveKey) el.saveKey.checked = false;
     }catch(e){}
-    safeRemoveStorage(LS_KEY);
-    safeRemoveStorage(LS_MODEL);
     updateBadge();
-    setStatus('키를 지웠어요. 내장 엔진으로 동작합니다.', '');
+    setStatus((p === 'openai' ? 'GPT' : 'Gemini') + ' 키를 지웠어요. 내장 엔진으로 동작합니다.', '');
     toast('키를 삭제했어요');
   }
 
@@ -2064,7 +2282,7 @@ function closestIn(node, sel){
           { role: 'user', content: prompt.user }
         ],
         temperature: 0.9,
-        max_tokens: 1400
+        max_tokens: 1800
       }),
       signal: controller ? controller.signal : undefined
     }).then(function(res){
@@ -2088,20 +2306,121 @@ function closestIn(node, sel){
     });
   }
 
+  /* ---------- Gemini 호출 (Google 무료 티어) ---------- */
+  var GEMINI_FALLBACK_MODEL = 'gemini-2.0-flash';
+
+  function geminiUrl(model, key){
+    return 'https://generativelanguage.googleapis.com/v1beta/models/' +
+           encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key);
+  }
+
+  function geminiReason(status, body){
+    var apiMsg = (body && body.error && body.error.message) ? String(body.error.message) : '';
+    if(status === 400){
+      if(/API key not valid|API_KEY_INVALID|invalid.{0,20}api key/i.test(apiMsg)) return 'Gemini API 키가 올바르지 않아요. 키를 다시 확인해 주세요';
+      return 'Gemini 요청이 거부됐어요' + (apiMsg ? ' (' + apiMsg + ')' : '');
+    }
+    if(status === 401) return 'Gemini API 키가 올바르지 않아요. 키를 다시 확인해 주세요';
+    if(status === 403) return '이 키로 Gemini를 쓸 권한이 없어요. AI Studio에서 API 사용 설정을 확인해 주세요';
+    if(status === 404) return '선택한 Gemini 모델을 이 키에서 쓸 수 없어요';
+    if(status === 429) return 'Gemini 무료 할당량을 다 썼어요. 잠시 후 다시 시도해 주세요';
+    if(status >= 500) return 'Gemini 서버가 잠시 응답하지 않아요 (HTTP ' + status + ')';
+    return apiMsg || ('HTTP ' + status);
+  }
+
+  function callGeminiOnce(key, model, prompt, noThinking){
+    if(typeof fetch !== 'function'){
+      return Promise.reject(new Error('이 미리보기에서는 네트워크 호출(fetch)을 지원하지 않아요'));
+    }
+    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = controller ? setTimeout(function(){ try{ controller.abort(); }catch(e){} }, 60000) : null;
+
+    var generationConfig = { temperature: 0.85, maxOutputTokens: 2048 };
+    if(noThinking) generationConfig.thinkingConfig = { thinkingBudget: 0 };
+
+    return fetch(geminiUrl(model, key), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: prompt.system }] },
+        contents: [{ role: 'user', parts: [{ text: prompt.user }] }],
+        generationConfig: generationConfig
+      }),
+      signal: controller ? controller.signal : undefined
+    }).then(function(res){
+      if(!res.ok){
+        return res.json().catch(function(){ return {}; }).then(function(body){
+          var err = new Error(geminiReason(res.status, body));
+          err.status = res.status;
+          err.apiMessage = (body && body.error && body.error.message) || '';
+          throw err;
+        });
+      }
+      return res.json();
+    }).then(function(data){
+      if(timer) clearTimeout(timer);
+      var cand = data && data.candidates && data.candidates[0];
+      var parts = (cand && cand.content && cand.content.parts) || [];
+      var text = '';
+      for(var i = 0; i < parts.length; i++){
+        if(parts[i] && parts[i].text) text += parts[i].text;
+      }
+      text = text.replace(/^\s+|\s+$/g, '');
+      var finish = cand && cand.finishReason;
+      /* thinking 토큰이 출력 한도를 먹어 빈 응답·아주 짧은 절단이 나오면 재시도 대상으로 본다 */
+      if(!text || (finish === 'MAX_TOKENS' && text.length < 400)){
+        var block = data && data.promptFeedback && data.promptFeedback.blockReason;
+        var err2 = new Error(block
+          ? '안전 정책에 따라 응답이 차단됐어요 (' + block + ')'
+          : (finish === 'MAX_TOKENS' ? '응답이 길이 제한에서 잘렸어요' : '응답이 비어 있어요'));
+        err2.finishReason = finish || '';
+        err2.blockReason = block || '';
+        throw err2;
+      }
+      return text;
+    }).catch(function(err){
+      if(timer) clearTimeout(timer);
+      throw err;
+    });
+  }
+
+  /* 2.5-flash 실패(404) 시 2.0-flash로 1회 폴백, 길이 초과면 thinking을 꺼고 한 번 더 */
+  function callGemini(key, model, prompt){
+    var primary = model || DEFAULT_GEMINI_MODEL;
+
+    function attempt(target, noThinking, allowModelFallback){
+      return callGeminiOnce(key, target, prompt, noThinking).catch(function(err){
+        if(allowModelFallback && err && err.status === 404 && target !== GEMINI_FALLBACK_MODEL){
+          return attempt(GEMINI_FALLBACK_MODEL, noThinking, false);
+        }
+        throw err;
+      });
+    }
+
+    return attempt(primary, false, true).catch(function(err){
+      if(err && err.finishReason === 'MAX_TOKENS'){
+        return attempt(primary, true, true);
+      }
+      throw err;
+    });
+  }
+
   function aiReplyText(state, reading, aiText){
+    var body = String(aiText).replace(/\*\*/g, '').replace(/^#{1,3}\s*/gm, '').trim();
     var lines = [];
     lines.push('🔮 ' + state.name + '님의 ' + reading.areaLabel + ' 타로 리딩');
     lines.push('');
-    lines.push('안녕하세요, ' + state.name + '님. 보내주신 사연으로 카드를 펼쳐봤어요.');
+    /* 결론이 먼저 오도록 AI 본문을 카드 목록보다 앞에 둔다 */
+    lines.push(body);
     lines.push('');
     lines.push('🃏 뽑힌 카드');
     reading.notes.forEach(function(nt, i){
       lines.push((i + 1) + '. ' + nt.pos + ' — ' + nt.ko + ' (' + nt.orient + ') · ' + nt.keys);
     });
-    lines.push('');
-    lines.push(String(aiText).replace(/\*\*/g, '').replace(/^#{1,3}\s*/gm, '').trim());
-    lines.push('');
-    lines.push('※ 본 리딩은 참고용이며, 의료·법률·투자 판단을 대신하지 않습니다.');
+    if(body.indexOf('참고용') === -1){
+      lines.push('');
+      lines.push('※ 본 리딩은 참고용이며, 의료·법률·투자 판단을 대신하지 않습니다.');
+    }
     return lines.join('\n');
   }
 
@@ -2273,8 +2592,10 @@ function closestIn(node, sel){
         state.cards = cards;
         var reading = TarotCore.buildReading(state);
 
-        var key = (el.apiKey && el.apiKey.value ? el.apiKey.value : '').trim();
-        var model = (el.model && el.model.value) || 'gpt-4o-mini';
+        var provider = currentProvider();
+        var key = provider === 'openai' ? openaiKeyValue() : geminiKeyValue();
+        var model = provider === 'openai' ? openaiModelValue() : geminiModelValue();
+        var aiName = provider === 'openai' ? 'GPT' : 'Gemini';
 
         if(!key){
           current = { state: state, reading: reading, mode: 'local', aiText: '' };
@@ -2283,17 +2604,18 @@ function closestIn(node, sel){
           return;
         }
 
-        setStatus('GPT가 해설을 쓰고 있어요… (보통 5~15초)', '');
+        setStatus(aiName + '가 사연을 읽고 해설을 쓰고 있어요… (보통 5~15초)', '');
         var prompt = TarotCore.buildPrompt(state);
-        callOpenAI(key, model, prompt).then(function(aiText){
+        var request = (provider === 'openai') ? callOpenAI(key, model, prompt) : callGemini(key, model, prompt);
+        request.then(function(aiText){
           current = { state: state, reading: reading, mode: 'ai', aiText: aiText };
-          showResult(TarotCore.buildAIResultHTML(state, reading, aiText, ''));
-          finish('GPT 해설을 완성했어요. 마음에 안 드는 문장은 자유롭게 다듬어 보세요.', 'ok');
+          showResult(TarotCore.buildAIResultHTML(state, reading, aiText, '', aiName));
+          finish(aiName + ' 해설을 완성했어요. 마음에 안 드는 문장은 자유롭게 다듬어 보세요.', 'ok');
         }).catch(function(err){
           current = { state: state, reading: reading, mode: 'local', aiText: '' };
           showResult(TarotCore.buildResultHTML(state, reading));
           var reason = (err && err.name === 'AbortError') ? '응답 시간이 초과됐어요' : ((err && err.message) || '알 수 없는 오류');
-          finish('AI 호출에 실패해 내장 엔진으로 대신 해설했어요. (' + reason + ')', 'error');
+          finish(aiName + ' 호출에 실패해 내장 엔진으로 대신 해설했어요. (' + reason + ')', 'error');
         });
       }catch(err){
         busy = false;
@@ -2335,7 +2657,12 @@ function closestIn(node, sel){
         try{ el.settingsPanel.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
         catch(e){ try{ el.settingsPanel.scrollIntoView(); }catch(_){} }
       }
-      setTimeout(function(){ try{ if(el.apiKey && el.apiKey.focus) el.apiKey.focus(); }catch(e){} }, 320);
+      setTimeout(function(){
+        try{
+          var focusEl = currentProvider() === 'openai' ? el.apiKey : el.geminiKey;
+          if(focusEl && focusEl.focus) focusEl.focus();
+        }catch(e){}
+      }, 320);
     }catch(e){ reportError(e, 'settings'); }
   }
 
@@ -2445,6 +2772,13 @@ function closestIn(node, sel){
       if(el.saveKey && el.saveKey.checked) saveSettings();
       else updateBadge();
     }, 'model'));
+    on(el.geminiKey, 'input', guard(updateBadge, 'badge'));
+    on(el.geminiModel, 'change', guard(function(){
+      if(el.saveKey && el.saveKey.checked) saveSettings();
+      else updateBadge();
+    }, 'gemini-model'));
+    on(el.providerGemini, 'change', guard(syncProviderUI, 'provider'));
+    on(el.providerOpenai, 'change', guard(syncProviderUI, 'provider'));
 
     clampBirth();
     loadSettings();
