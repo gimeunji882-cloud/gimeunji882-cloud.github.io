@@ -1,0 +1,2480 @@
+<!DOCTYPE html>
+<!-- v2 · 2026-11-27 · iOS 파일 미리보기(QuickLook) 대응 수정
+     · form 태그 제거 → 버튼을 눌러도 페이지가 새로고침되며 입력이 지워지지 않음
+     · localStorage/sessionStorage 접근을 safe*Storage 헬퍼로 감싸 SecurityError 차단
+     · 칩·예시·카드뽑기 버튼을 click + touchend 두 경로로 받아 iOS 탭 누락 방지
+     · 런타임 오류를 화면 하단 배너와 상태줄에 표시 -->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="고객 정보를 입력하면 타로 카드를 자동으로 뽑고 AI가 해설을 만들어 주는 타로 상담 자동화 프로그램 (초안)">
+<title>🔮 AI 타로 리딩 · 상담 자동화</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#07060f;
+    --bg-2:#0e0b21;
+    --panel:rgba(23,19,48,.72);
+    --panel-solid:#15112c;
+    --gold:#d9b871;
+    --gold-2:#f2ddaa;
+    --gold-dim:rgba(217,184,113,.28);
+    --line:rgba(217,184,113,.22);
+    --text:#ece8f7;
+    --muted:#a49cc2;
+    --purple:#7b5cd6;
+    --purple-soft:rgba(123,92,214,.18);
+    --rose:#e08fae;
+    --radius:18px;
+    --shadow:0 18px 50px rgba(0,0,0,.45);
+    --sans:'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+    --serif:'Noto Serif KR','Cormorant Garamond',Georgia,'Apple SD Gothic Neo',serif;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    min-height:100vh;
+    color:var(--text);
+    font-family:var(--sans);
+    font-weight:400;
+    line-height:1.7;
+    background:
+      radial-gradient(1200px 700px at 12% -10%, rgba(84,58,160,.38), transparent 62%),
+      radial-gradient(900px 600px at 96% 6%, rgba(46,32,98,.42), transparent 60%),
+      radial-gradient(1000px 800px at 50% 120%, rgba(120,84,40,.16), transparent 65%),
+      linear-gradient(180deg,#080613 0%, #0b0819 45%, #07060f 100%);
+    background-attachment:fixed;
+  }
+  .bg-stars{
+    position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.55;
+    background-image:
+      radial-gradient(1.3px 1.3px at 12% 22%, rgba(255,255,255,.75), transparent 60%),
+      radial-gradient(1px 1px at 78% 14%, rgba(255,255,255,.6), transparent 60%),
+      radial-gradient(1.6px 1.6px at 34% 74%, rgba(255,244,214,.7), transparent 60%),
+      radial-gradient(1px 1px at 62% 46%, rgba(255,255,255,.45), transparent 60%),
+      radial-gradient(1.2px 1.2px at 90% 82%, rgba(255,255,255,.5), transparent 60%),
+      radial-gradient(1px 1px at 6% 62%, rgba(255,255,255,.4), transparent 60%);
+    background-size:340px 340px;
+  }
+  .bg-stars::after{
+    content:"";position:absolute;inset:0;
+    background-image:
+      radial-gradient(1px 1px at 48% 8%, rgba(255,255,255,.35), transparent 60%),
+      radial-gradient(1.4px 1.4px at 22% 92%, rgba(255,248,225,.4), transparent 60%);
+    background-size:520px 520px;
+    animation:twinkle 9s ease-in-out infinite alternate;
+  }
+  @keyframes twinkle{from{opacity:.25}to{opacity:.7}}
+
+  a{color:var(--gold-2)}
+  .topbar{
+    position:relative;z-index:2;
+    max-width:1180px;margin:0 auto;
+    padding:26px 22px 10px;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  }
+  .brand{display:flex;align-items:center;gap:14px}
+  .brand-mark{
+    width:48px;height:48px;flex:none;display:grid;place-items:center;
+    border-radius:50%;
+    font-size:24px;color:var(--gold-2);
+    background:radial-gradient(circle at 35% 30%, rgba(217,184,113,.28), rgba(123,92,214,.14) 70%);
+    border:1px solid var(--line);
+    box-shadow:0 0 26px rgba(217,184,113,.18), inset 0 0 14px rgba(217,184,113,.08);
+  }
+  .brand h1{
+    margin:0;font-family:var(--serif);font-weight:600;
+    font-size:23px;letter-spacing:.02em;
+    background:linear-gradient(100deg,#f6e6bd,#d9b871 55%,#f6e6bd);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .brand p{margin:2px 0 0;font-size:11.5px;color:var(--muted);letter-spacing:.02em}
+  .top-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .mode-badge{
+    font-size:11px;letter-spacing:.06em;color:var(--gold-2);
+    border:1px solid var(--line);border-radius:999px;
+    padding:6px 12px;background:rgba(217,184,113,.07);white-space:nowrap;
+  }
+  .mode-badge.live{color:#bfead2;border-color:rgba(120,220,170,.32);background:rgba(60,160,120,.12)}
+
+  .layout{
+    position:relative;z-index:2;
+    max-width:1180px;margin:0 auto;padding:14px 22px 40px;
+    display:grid;grid-template-columns:minmax(330px,400px) minmax(0,1fr);
+    gap:22px;align-items:start;
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    padding:22px;
+  }
+  .panel-head h2{
+    margin:0;font-family:var(--serif);font-size:17px;font-weight:600;color:var(--gold-2);
+    letter-spacing:.02em;
+  }
+  .panel-head p{margin:4px 0 16px;font-size:12px;color:var(--muted)}
+
+  /* ---------- settings ---------- */
+  .settings{
+    border:1px solid rgba(217,184,113,.16);border-radius:12px;
+    background:rgba(10,8,24,.45);margin-bottom:16px;
+  }
+  .settings summary{
+    list-style:none;cursor:pointer;padding:11px 14px;
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    font-size:12.5px;color:var(--gold-2);font-weight:500;
+  }
+  .settings summary::-webkit-details-marker{display:none}
+  .settings[open] .chev{transform:rotate(180deg)}
+  .chev{transition:transform .2s;font-size:10px;color:var(--muted)}
+  .optional,.opt{color:var(--muted);font-weight:300;font-size:10.5px}
+  .settings-body{padding:4px 14px 14px;border-top:1px solid rgba(217,184,113,.12)}
+  .hint{font-size:11.5px;color:var(--muted);margin:10px 0}
+  .hint.tiny{font-size:10.5px;line-height:1.6;margin-top:12px}
+  .settings-actions{display:flex;gap:8px;margin-top:12px}
+  .settings-body .row-2{align-items:end}
+  .settings-body .check{margin-bottom:10px}
+
+  /* ---------- form ---------- */
+  .row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .field{display:block;margin-bottom:14px}
+  .field-label{
+    display:block;font-size:11.5px;color:var(--muted);
+    margin-bottom:6px;letter-spacing:.02em;
+  }
+  .req{color:var(--gold);font-weight:500}
+  input[type="text"],input[type="password"],input[type="date"],select,textarea{
+    width:100%;font-family:var(--sans);font-size:14px;color:var(--text);
+    background:rgba(8,6,20,.72);
+    border:1px solid rgba(217,184,113,.2);border-radius:10px;
+    padding:10px 12px;outline:none;
+    transition:border-color .18s, box-shadow .18s, background .18s;
+    -webkit-appearance:none;appearance:none;
+  }
+  select{
+    background-image:linear-gradient(45deg,transparent 50%,var(--gold) 50%),linear-gradient(135deg,var(--gold) 50%,transparent 50%);
+    background-position:calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+    background-size:5px 5px, 5px 5px;background-repeat:no-repeat;
+    padding-right:34px;cursor:pointer;
+  }
+  select option{background:#15112c;color:var(--text)}
+  input::placeholder,textarea::placeholder{color:#6f6890}
+  input:focus,select:focus,textarea:focus{
+    border-color:rgba(217,184,113,.68);
+    box-shadow:0 0 0 3px rgba(217,184,113,.1);
+    background:rgba(11,8,26,.9);
+  }
+  input[type="date"]{color-scheme:dark}
+  textarea{resize:vertical;min-height:104px;line-height:1.65}
+  .check{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted);margin-top:2px}
+  .check input{width:15px;height:15px;accent-color:var(--gold)}
+
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{
+    font-family:var(--sans);font-size:12px;color:var(--muted);
+    background:rgba(8,6,20,.6);border:1px solid rgba(217,184,113,.18);
+    border-radius:999px;padding:7px 13px;cursor:pointer;
+    transition:all .16s;white-space:nowrap;
+  }
+  .chip:hover{border-color:rgba(217,184,113,.45);color:var(--gold-2)}
+  .chip.active{
+    background:linear-gradient(140deg,rgba(217,184,113,.22),rgba(123,92,214,.22));
+    border-color:rgba(217,184,113,.66);color:#fff6e2;
+    box-shadow:0 0 16px rgba(217,184,113,.12);
+  }
+  .examples{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:-4px 0 18px}
+  .examples-label{font-size:10.5px;color:var(--muted);letter-spacing:.04em;margin-right:2px}
+  .example-btn{
+    font-family:var(--sans);font-size:11px;color:var(--gold-2);
+    background:transparent;border:1px dashed rgba(217,184,113,.3);
+    border-radius:999px;padding:4px 10px;cursor:pointer;transition:all .16s;
+  }
+  .example-btn:hover{background:rgba(217,184,113,.1);border-style:solid}
+
+  .btn{
+    font-family:var(--sans);font-weight:500;font-size:13.5px;
+    border-radius:11px;border:1px solid transparent;cursor:pointer;
+    padding:11px 16px;transition:transform .14s, box-shadow .18s, background .18s, border-color .18s;
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  }
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{
+    width:100%;padding:15px 18px;font-size:15px;font-weight:700;color:#231a06;
+    background:linear-gradient(120deg,#f0d79c,#d9b871 45%,#f4dfae);
+    box-shadow:0 14px 34px rgba(217,184,113,.22), inset 0 1px 0 rgba(255,255,255,.5);
+    letter-spacing:.01em;
+  }
+  .btn.primary:hover{box-shadow:0 18px 40px rgba(217,184,113,.32);filter:brightness(1.04)}
+  .btn.primary:disabled{opacity:.6;cursor:progress;filter:grayscale(.2)}
+  .btn.ghost{
+    color:var(--gold-2);border-color:rgba(217,184,113,.34);
+    background:rgba(217,184,113,.06);text-decoration:none;
+  }
+  .btn.ghost:hover{background:rgba(217,184,113,.14)}
+  .btn.small{font-size:11.5px;padding:7px 12px;border-radius:9px}
+  .btn.mini{font-size:11px;padding:6px 10px;border-radius:8px;color:var(--gold-2);border-color:rgba(217,184,113,.3);background:rgba(217,184,113,.06)}
+  .btn-ico{font-size:17px;line-height:1}
+  .status{margin:10px 2px 0;font-size:11.5px;color:var(--muted);min-height:17px;line-height:1.5}
+  .status.error{color:#f0a5a5}
+  .status.ok{color:#a8e0bf}
+
+  /* ---------- reading panel ---------- */
+  .reading-panel{min-height:520px}
+  .empty{
+    text-align:center;padding:64px 18px 56px;color:var(--muted);
+  }
+  .empty .moon{
+    font-size:46px;display:block;margin-bottom:18px;color:var(--gold-2);
+    text-shadow:0 0 34px rgba(217,184,113,.45);animation:float 6s ease-in-out infinite;
+  }
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  .empty h3{
+    margin:0 0 8px;font-family:var(--serif);font-size:18px;font-weight:500;color:var(--gold-2);
+  }
+  .empty p{margin:0 auto;max-width:340px;font-size:12.5px;line-height:1.8}
+  .empty .steps{
+    margin:26px auto 0;max-width:330px;text-align:left;
+    display:grid;gap:9px;font-size:12px;
+  }
+  .empty .steps span{display:flex;gap:9px;align-items:flex-start}
+  .empty .mun{color:var(--gold);font-size:11px;flex:none;padding-top:2px}
+
+  /* shuffle */
+  .shuffle-stage{text-align:center;padding:56px 10px}
+  .deck{position:relative;width:112px;height:180px;margin:8px auto 26px}
+  .deck .back{
+    position:absolute;inset:0;border-radius:12px;
+    background:
+      radial-gradient(circle at 50% 40%, rgba(123,92,214,.32), transparent 62%),
+      linear-gradient(160deg,#2a2158,#120d2b);
+    border:1px solid rgba(217,184,113,.4);
+    box-shadow:0 12px 26px rgba(0,0,0,.5), inset 0 0 0 4px rgba(7,6,15,.5), inset 0 0 0 5px rgba(217,184,113,.18);
+    display:grid;place-items:center;
+    color:var(--gold);font-size:20px;letter-spacing:.16em;
+  }
+  .deck .back::after{content:"☾ ✦";opacity:.8}
+  .deck .back:nth-child(1){animation:shuf-a 1.05s ease-in-out infinite}
+  .deck .back:nth-child(2){animation:shuf-b 1.05s ease-in-out infinite}
+  .deck .back:nth-child(3){animation:shuf-c 1.05s ease-in-out infinite}
+  .deck .back:nth-child(4){animation:shuf-a 1.05s ease-in-out .18s infinite}
+  @keyframes shuf-a{0%,100%{transform:translateX(0) rotate(-2deg)}50%{transform:translateX(-26px) rotate(-9deg)}}
+  @keyframes shuf-b{0%,100%{transform:translateX(0) rotate(2deg)}50%{transform:translateX(26px) rotate(9deg)}}
+  @keyframes shuf-c{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-12px) rotate(4deg)}}
+  .shuffle-stage p{margin:0;font-family:var(--serif);font-size:15px;color:var(--gold-2)}
+  .shuffle-stage small{display:block;margin-top:6px;font-size:11.5px;color:var(--muted)}
+
+  /* result head */
+  .reading-head{text-align:center;padding-bottom:4px;border-bottom:1px solid rgba(217,184,113,.14)}
+  .eyebrow{
+    margin:0 0 8px;font-size:10px;letter-spacing:.28em;color:var(--gold);text-transform:uppercase;
+  }
+  .reading-head h2{
+    margin:0;font-family:var(--serif);font-weight:500;font-size:22px;letter-spacing:.01em;
+  }
+  .reading-head h2 .name{color:var(--gold-2)}
+  .meta-chips{display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin:12px 0 16px}
+  .meta-chips span{
+    font-size:10.5px;color:var(--muted);border:1px solid rgba(217,184,113,.16);
+    border-radius:999px;padding:4px 10px;background:rgba(217,184,113,.04);
+  }
+
+  /* cards */
+  .cards-row{display:flex;justify-content:center;flex-wrap:wrap;gap:14px;margin:20px 0 26px}
+  .card-slot{width:148px;max-width:31%;display:flex;flex-direction:column;align-items:center;gap:8px}
+  .pos-label{
+    font-size:10px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase;
+    white-space:nowrap;
+  }
+  .tarot-card{
+    width:100%;aspect-ratio:5 / 8;border-radius:12px;padding:6px;
+    background:linear-gradient(160deg,#251d51,#0f0b25 72%);
+    box-shadow:0 16px 34px rgba(0,0,0,.55), inset 0 0 0 1px rgba(217,184,113,.55);
+    position:relative;overflow:hidden;
+    opacity:0;transform:translateY(14px) rotateY(-18deg);
+    animation:reveal .62s cubic-bezier(.22,.8,.3,1) forwards;
+  }
+  @keyframes reveal{to{opacity:1;transform:translateY(0) rotateY(0)}}
+  .tarot-card::before{
+    content:"";position:absolute;inset:5px;border:1px solid rgba(217,184,113,.32);border-radius:8px;
+    pointer-events:none;z-index:2;
+  }
+  .tarot-card::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(circle at 50% 26%, rgba(123,92,214,.28), transparent 62%);
+  }
+  .card-art{
+    position:relative;z-index:1;height:100%;
+    display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+    padding:8px 6px;text-align:center;
+    transition:transform .5s ease;
+  }
+  .tarot-card.rev .card-art{transform:rotate(180deg)}
+  .tarot-card.rev{box-shadow:0 16px 34px rgba(0,0,0,.55), inset 0 0 0 1px rgba(168,128,226,.6)}
+  .numeral{
+    font-family:'Cormorant Garamond',var(--serif);font-size:12px;letter-spacing:.18em;
+    color:var(--gold);opacity:.95;line-height:1;
+  }
+  .card-icon{margin:2px 0;line-height:0}
+  .card-icon svg{
+    width:56px;height:56px;color:var(--gold-2);
+    filter:drop-shadow(0 0 9px rgba(217,184,113,.35));
+  }
+  .card-name{width:100%}
+  .card-name .ko{
+    font-family:var(--serif);font-size:14px;font-weight:600;color:#fbf2dc;
+    letter-spacing:.04em;line-height:1.3;
+  }
+  .card-name .en{
+    font-family:'Cormorant Garamond',serif;font-size:8.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);margin-top:1px;
+  }
+  .card-name .rule{
+    width:34px;height:1px;margin:6px auto;
+    background:linear-gradient(90deg,transparent,rgba(217,184,113,.75),transparent);
+  }
+  .card-keys{
+    font-size:8px;color:#bdb3d6;line-height:1.5;letter-spacing:-.01em;
+    display:flex;flex-wrap:wrap;justify-content:center;gap:2px 5px;
+  }
+  .card-keys i{font-style:normal;opacity:.9}
+  .card-keys i+ i::before{content:"·";margin-right:5px;color:rgba(217,184,113,.6)}
+  .orient{
+    font-size:9.5px;letter-spacing:.08em;padding:3px 9px;border-radius:999px;
+    border:1px solid rgba(217,184,113,.35);color:var(--gold-2);background:rgba(217,184,113,.07);
+  }
+  .orient.rev{border-color:rgba(168,128,226,.4);color:#cbb4f0;background:rgba(123,92,214,.14)}
+
+  /* reading body */
+  .block{margin:0 0 22px}
+  .block h3{
+    margin:0 0 10px;font-family:var(--serif);font-size:14px;font-weight:600;
+    color:var(--gold-2);letter-spacing:.02em;
+    display:flex;align-items:center;gap:8px;
+  }
+  .block h3::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(217,184,113,.26),transparent)}
+  .block p{margin:0 0 9px;font-size:13.5px;line-height:1.95;color:#ded9ee}
+  .block p.lead{font-size:13.5px}
+  .block strong{color:#fff4da;font-weight:600}
+  .card-note{
+    border-left:2px solid rgba(217,184,113,.42);
+    padding:2px 0 2px 14px;margin:0 0 15px;
+  }
+  .card-note-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:5px}
+  .card-note-head .pos{
+    font-size:10px;letter-spacing:.1em;color:var(--gold);
+    border:1px solid rgba(217,184,113,.28);border-radius:5px;padding:2px 7px;
+  }
+  .card-note-head strong{font-family:var(--serif);font-size:14.5px;color:#fff4da;font-weight:600}
+  .card-note-head em{font-style:normal;font-size:10.5px;color:var(--muted)}
+  .card-note p{margin:0;font-size:13px;line-height:1.9;color:#d8d2e8}
+  .card-note .keys{font-size:10.5px;color:var(--gold);opacity:.85;margin-top:4px;letter-spacing:.02em}
+
+  .advice-list{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+  .advice-list li{
+    display:flex;gap:10px;font-size:13px;line-height:1.8;color:#ded9ee;
+    background:rgba(217,184,113,.05);border:1px solid rgba(217,184,113,.12);
+    border-radius:10px;padding:10px 13px;
+  }
+  .advice-list li .no{color:var(--gold);font-family:var(--serif);font-size:12px;flex:none;padding-top:3px}
+  .closing{
+    margin:4px 0 22px;padding:16px 18px;border-radius:12px;
+    background:linear-gradient(140deg,rgba(123,92,214,.16),rgba(217,184,113,.08));
+    border:1px solid rgba(217,184,113,.16);
+  }
+  .closing p{margin:0;font-family:var(--serif);font-size:13.5px;color:#f2e9d4;line-height:1.9}
+  .disclaimer{font-size:10.5px;color:#7d7599;line-height:1.7;margin:0 0 18px}
+
+  /* actions */
+  .actions{display:flex;flex-wrap:wrap;gap:9px;padding-top:16px;border-top:1px solid rgba(217,184,113,.14)}
+  .actions .btn{flex:1 1 auto}
+  .actions .btn.main{
+    color:#231a06;font-weight:700;
+    background:linear-gradient(120deg,#f0d79c,#d9b871 55%,#f2ddaa);
+    border-color:transparent;box-shadow:0 10px 26px rgba(217,184,113,.2);
+  }
+  .actions .btn.main:hover{filter:brightness(1.05)}
+
+  /* prompt */
+  .prompt-box{
+    margin-top:14px;border:1px solid rgba(217,184,113,.16);border-radius:12px;
+    background:rgba(8,6,20,.5);
+  }
+  .prompt-box summary{
+    list-style:none;cursor:pointer;padding:11px 14px;font-size:12px;color:var(--gold-2);
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
+  }
+  .prompt-box summary::-webkit-details-marker{display:none}
+  .prompt-box[open] summary .chev{transform:rotate(180deg)}
+  .prompt-inner{padding:0 14px 14px;border-top:1px solid rgba(217,184,113,.1)}
+  .prompt-inner pre{
+    white-space:pre-wrap;word-break:break-word;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:10.5px;line-height:1.75;color:#c3bcd8;
+    background:rgba(5,4,14,.7);border:1px solid rgba(217,184,113,.1);
+    border-radius:9px;padding:12px;max-height:320px;overflow:auto;margin:12px 0 10px;
+  }
+
+  .foot{
+    position:relative;z-index:2;max-width:1180px;margin:0 auto;
+    padding:0 22px 34px;text-align:center;font-size:10.5px;color:#6e6688;line-height:1.8;
+  }
+
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translate(-50%,16px);
+    background:rgba(24,19,45,.96);border:1px solid rgba(217,184,113,.4);
+    color:#f6ecd4;font-size:12.5px;padding:11px 18px;border-radius:999px;
+    box-shadow:0 14px 34px rgba(0,0,0,.5);opacity:0;pointer-events:none;
+    transition:opacity .22s, transform .22s;z-index:50;max-width:88vw;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  @media (max-width: 980px){
+    .layout{grid-template-columns:1fr;gap:16px;padding:10px 16px 34px}
+    .topbar{padding:20px 16px 6px}
+    .reading-panel{min-height:0}
+    .empty{padding:46px 10px 40px}
+  }
+  @media (max-width: 560px){
+    .brand h1{font-size:20px}
+    .brand p{font-size:10.5px}
+    .panel{padding:17px;border-radius:15px}
+    .row-2{grid-template-columns:1fr;gap:0}
+    .cards-row{gap:7px}
+    .card-slot{width:31.5%}
+    .card-name .ko{font-size:12px}
+    .card-name .en{font-size:7px}
+    .card-icon svg{width:42px;height:42px}
+    .card-keys{font-size:7px}
+    .numeral{font-size:10px}
+    .reading-head h2{font-size:19px}
+    .block p,.card-note p,.advice-list li{font-size:12.5px}
+    .actions .btn{flex:1 1 100%}
+  }
+  /* ---------- iOS 탭/터치 안정화 ---------- */
+  button,.chip,.example-btn,.btn,.settings summary{
+    -webkit-appearance:none;appearance:none;
+    -webkit-tap-highlight-color:rgba(217,184,113,.18);
+    touch-action:manipulation;
+    -webkit-user-select:none;user-select:none;
+  }
+  button{font-family:var(--sans)}
+  .chip,.example-btn,.btn{position:relative;z-index:1}
+
+  /* ---------- 런타임 오류 안내 ---------- */
+  .err-banner{
+    position:fixed;left:12px;right:12px;bottom:12px;z-index:70;
+    max-width:640px;margin:0 auto;
+    background:#2a1220;border:1px solid rgba(240,140,140,.45);
+    border-radius:12px;padding:12px 14px;
+    color:#ffd9d9;font-size:12px;line-height:1.6;
+    box-shadow:0 18px 40px rgba(0,0,0,.55);
+  }
+  .err-banner strong{color:#ffb3b3;display:block;margin-bottom:4px}
+  .err-banner pre{
+    margin:6px 0 10px;padding:8px;border-radius:8px;overflow:auto;max-height:120px;
+    background:rgba(0,0,0,.35);font-size:11px;color:#f3c6c6;
+    white-space:pre-wrap;word-break:break-all;font-family:ui-monospace,Menlo,monospace;
+  }
+  .err-banner .err-actions{display:flex;gap:8px;justify-content:flex-end}
+  .err-banner.inline{position:static;margin:14px auto;max-width:1180px;left:auto;right:auto;bottom:auto}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
+  }
+</style>
+</head>
+<body>
+<div class="bg-stars" aria-hidden="true"></div>
+
+<noscript>
+  <div class="err-banner inline" role="alert">
+    <strong>이 화면은 자바스크립트가 필요합니다</strong>
+    미리보기가 자바스크립트를 막고 있으면 카드를 뽑을 수 없습니다. 파일을 다운로드해 자바스크립트를 지원하는 화면(PC 크롬·사파리 또는 파일 뷰어)에서 열어 주세요.
+  </div>
+</noscript>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">☾</span>
+    <div>
+      <h1>AI 타로 리딩</h1>
+      <p>고객 정보 한 번이면, 카드 뽑기부터 해설·답장까지 자동으로</p>
+    </div>
+  </div>
+  <div class="top-actions">
+    <span class="mode-badge" id="modeBadge">내장 엔진 모드</span>
+    <button type="button" class="btn ghost small" id="jumpSettings">⚙️ AI 연결 설정</button>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- ============ INPUT ============ -->
+  <section class="panel input-panel">
+    <div class="panel-head">
+      <h2>고객 정보 &amp; 문의</h2>
+      <p>카톡·크몽·인스타로 받은 상담 내용을 그대로 옮겨 적으세요.</p>
+    </div>
+
+    <details class="settings" id="settingsPanel">
+      <summary>
+        <span>⚙️ OpenAI API 연결 <span class="optional">(선택)</span></span>
+        <span class="chev" aria-hidden="true">▾</span>
+      </summary>
+      <div class="settings-body">
+        <p class="hint">키가 없어도 <strong>내장 엔진</strong>으로 바로 해설이 나옵니다. 키를 넣으면 실제 GPT가 더 깊고 유연하게 풀어 씁니다.</p>
+        <label class="field" for="apiKey">
+          <span class="field-label">OpenAI API Key</span>
+          <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off" spellcheck="false">
+        </label>
+        <div class="row-2">
+          <label class="field" for="model">
+            <span class="field-label">모델</span>
+            <select id="model">
+              <option value="gpt-4o-mini" selected>gpt-4o-mini (추천)</option>
+              <option value="gpt-4o">gpt-4o (고품질)</option>
+            </select>
+          </label>
+          <label class="check" for="saveKey">
+            <input type="checkbox" id="saveKey">
+            <span>이 브라우저에 키 저장</span>
+          </label>
+        </div>
+        <div class="settings-actions">
+          <button type="button" class="btn ghost small" id="saveSettings">설정 저장</button>
+          <button type="button" class="btn ghost small" id="clearKey">키 삭제</button>
+        </div>
+        <p class="hint tiny">🔒 키는 별도 서버 없이 이 브라우저에서 OpenAI로 바로 전송됩니다. 고객에게 배포하는 사본에는 절대 키를 넣지 마세요.</p>
+      </div>
+    </details>
+
+    <!-- form 이 아니라 div 입니다. 어떤 경우에도 페이지가 새로고침되며 입력이 지워지지 않습니다. -->
+    <div id="readingForm" class="input-body" role="form" aria-label="고객 정보 입력">
+      <div class="row-2">
+        <label class="field" for="custName">
+          <span class="field-label">고객 이름 / 닉네임 <b class="req">*</b></span>
+          <input type="text" id="custName" placeholder="예: 김지수" maxlength="20" autocomplete="off">
+        </label>
+        <label class="field" for="custBirth">
+          <span class="field-label">생년월일 <span class="opt">선택</span></span>
+          <input type="date" id="custBirth">
+        </label>
+      </div>
+
+      <div class="row-2">
+        <label class="field" for="custGender">
+          <span class="field-label">성별 <span class="opt">선택</span></span>
+          <select id="custGender">
+            <option value="">선택 안 함</option>
+            <option value="여성">여성</option>
+            <option value="남성">남성</option>
+            <option value="기타">기타</option>
+          </select>
+        </label>
+        <label class="field" for="spread">
+          <span class="field-label">스프레드</span>
+          <select id="spread">
+            <option value="one">1장 · 핵심 원카드</option>
+            <option value="ppf" selected>3장 · 과거 · 현재 · 미래</option>
+            <option value="csr">3장 · 현재상황 · 조언 · 결과</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="field">
+        <span class="field-label">상담 분야</span>
+        <div class="chips" id="areaChips" role="radiogroup" aria-label="상담 분야">
+          <button type="button" class="chip active" data-area="love" aria-pressed="true">💗 연애·재회</button>
+          <button type="button" class="chip" data-area="work" aria-pressed="false">💼 직장·이직</button>
+          <button type="button" class="chip" data-area="money" aria-pressed="false">🪙 금전·사업</button>
+          <button type="button" class="chip" data-area="relation" aria-pressed="false">🤝 인간관계</button>
+          <button type="button" class="chip" data-area="general" aria-pressed="false">🌌 종합운</button>
+        </div>
+      </div>
+
+      <label class="field" for="question">
+        <span class="field-label">고객 질문 · 사연</span>
+        <textarea id="question" rows="5" maxlength="600" placeholder="예) 헤어진 지 3개월 된 전 남자친구와 다시 만날 수 있을까요? 제가 먼저 연락을 해도 될까요?"></textarea>
+      </label>
+
+      <div class="examples">
+        <span class="examples-label">예시 사연</span>
+        <button type="button" class="example-btn" data-example="0">재회</button>
+        <button type="button" class="example-btn" data-example="1">이직</button>
+        <button type="button" class="example-btn" data-example="2">사업·금전</button>
+      </div>
+
+      <button type="button" class="btn primary" id="drawBtn">
+        <span class="btn-ico" aria-hidden="true">🔮</span> 카드 뽑고 AI 해설 생성하기
+      </button>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <!-- ============ READING ============ -->
+  <section class="panel reading-panel" aria-label="타로 리딩 결과">
+    <div class="empty" id="emptyState">
+      <span class="moon" aria-hidden="true">☾</span>
+      <h3>카드를 펼칠 준비가 되었어요</h3>
+      <p>왼쪽에 고객 정보와 사연을 적고 버튼을 누르면, 카드 뽑기부터 해설·답장 문구까지 한 번에 만들어집니다.</p>
+      <div class="steps">
+        <span><b class="mun">01</b> 고객 이름과 상담 분야를 입력하세요</span>
+        <span><b class="mun">02</b> 스프레드를 고르고 사연을 붙여넣으세요</span>
+        <span><b class="mun">03</b> 카드를 뽑고, 완성된 답장을 복사해 전송하세요</span>
+      </div>
+    </div>
+
+    <div class="shuffle-stage" id="shuffleStage" hidden>
+      <div class="deck" aria-hidden="true">
+        <span class="back"></span><span class="back"></span><span class="back"></span><span class="back"></span>
+      </div>
+      <p id="shuffleText">카드를 섞고 있어요…</p>
+      <small>질문의 기운을 담아 22장의 메이저 아르카나를 고르는 중</small>
+    </div>
+
+    <div id="readingOut" hidden></div>
+  </section>
+</main>
+
+<footer class="foot">
+  AI 타로 리딩 · 타로 부업 상담 자동화 초안 &nbsp;|&nbsp; v2 (2026-11-27 · iOS 미리보기 대응) &nbsp;|&nbsp; 이 리딩은 자기성찰과 오락을 위한 참고 자료이며, 의료·법률·투자 판단을 대신하지 않습니다.
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="err-banner" id="errBanner" role="alert" hidden></div>
+
+<script>
+/* ============================================================
+   CORE — 타로 데이터 & 해설 엔진 (DOM 의존 없음)
+   ============================================================ */
+/* ---------- 아이콘 (SVG) ---------- */
+const ICONS = {
+  fool: '<path d="M8 9l1.5 3 3 .5-2.2 2.2.5 3L8 16.2 5.2 17.7l.5-3-2.2-2.2 3-.5z"/><circle cx="27" cy="13" r="3.4"/><path d="M27 16.4v9.6M27 19.5l-6.5 3.5M27 19.5l6.5 3M27 26l-5 11M27 26l5 11"/>',
+  magician: '<path d="M24 5v30"/><path d="M13 24c0-4 2.6-6 4.6-4.4S20 26 22 26s4.5-2 4.5-6-2.6-6-4.6-4.4S20 22 18 22s-5-2-5-4z"/><path d="M33 12l2 4M36 9l1.5 3"/><circle cx="24" cy="40" r="2"/>',
+  priestess: '<path d="M17 9v30M31 9v30"/><path d="M27.5 17a5 5 0 100 10 6 6 0 01-2.5-10z"/><path d="M18 32h12"/><circle cx="22" cy="13" r="1"/>',
+  empress: '<circle cx="24" cy="24" r="6"/><path d="M24 18c0-5 3-8 3-8s3 3 3 8M24 18c0-5-3-8-3-8s-3 3-3 8"/><path d="M24 30c-3 4-7 6-7 6s1-5 4-8M24 30c3 4 7 6 7 6s-1-5-4-8"/><path d="M12 38c4-2 8-2 12 0s8 2 12 0"/>',
+  emperor: '<path d="M12 34l4-16 8 9 8-9 4 16z"/><path d="M12 34h24"/><circle cx="24" cy="11" r="2"/>',
+  hierophant: '<path d="M24 6v32"/><path d="M17 14h14M15 22h18M17 30h14"/><circle cx="24" cy="39" r="2"/>',
+  lovers: '<circle cx="18" cy="22" r="9"/><circle cx="30" cy="22" r="9"/><path d="M24 34c-3 4-2 8 0 8s3-4 0-8z"/>',
+  chariot: '<rect x="11" y="12" width="26" height="16" rx="2"/><circle cx="17" cy="35" r="4"/><circle cx="31" cy="35" r="4"/><path d="M17 12V8h6M31 12V8h-6"/>',
+  strength: '<circle cx="24" cy="24" r="9"/><path d="M24 15v-4M24 33v4M33 24h4M11 24h4M30.4 17.6l2.8-2.8M14.8 33.2l-2.8 2.8M30.4 30.4l2.8 2.8M14.8 14.8l-2.8-2.8"/><path d="M21 23h.1M27 23h.1M21.5 28c1.7 1.4 3.3 1.4 5 0"/>',
+  hermit: '<path d="M18 16h12l-2 16h-8z"/><path d="M24 16v-4a4 4 0 018 0v3"/><path d="M21 22h6M21 26h6"/><circle cx="24" cy="36" r="1.6"/>',
+  wheel: '<circle cx="24" cy="24" r="14"/><circle cx="24" cy="24" r="5"/><path d="M24 10v9M24 29v9M10 24h9M29 24h9M14.1 14.1l6.3 6.3M27.6 27.6l6.3 6.3M33.9 14.1l-6.3 6.3M20.4 27.6l-6.3 6.3"/>',
+  justice: '<path d="M24 8v32M12 38h24"/><path d="M10 18h28"/><path d="M10 18l-4 10h8zM38 18l-4 10h8z"/><circle cx="24" cy="12" r="2"/>',
+  hanged: '<path d="M10 10h28M24 10v9"/><path d="M16 19h16l-8 17z"/><path d="M16 19l-4-5M32 19l4-5"/>',
+  death: '<path d="M34 8c-13 0-21 10-21 21 7-6 15-6 22-1"/><path d="M13 29l-3 11"/><circle cx="33" cy="13" r="1.5"/>',
+  temperance: '<path d="M10 14h8l-2 10h-4zM30 14h8l-2 10h-4z"/><path d="M16 24c0 8 4 10 8 10s8-2 8-10"/><path d="M24 14v6"/>',
+  devil: '<path d="M24 35l-9 5 1.5-11-7-7 10-2 4.5-9 4.5 9 10 2-7 7 1.5 11z"/><circle cx="24" cy="24" r="9"/><circle cx="21" cy="23" r="1"/><circle cx="27" cy="23" r="1"/>',
+  tower: '<path d="M17 40V17l7-6 7 6v23z"/><path d="M14 40h20"/><path d="M22 20h4v5h-4z"/><path d="M31 8l-4 7 4 1-5 7"/>',
+  star: '<path d="M24 6l4.6 13.4L42 21l-11 8 4 14-11-8-11 8 4-14-11-8 13.4-1.6z"/><circle cx="9" cy="9" r="1"/><circle cx="40" cy="39" r="1"/>',
+  moon: '<path d="M30 7a16 16 0 100 34 13 13 0 010-34z"/><path d="M36 15l1 2.4 2.4 1-2.4 1-1 2.4-1-2.4-2.4-1 2.4-1z"/><circle cx="38" cy="30" r="1"/>',
+  sun: '<circle cx="24" cy="24" r="8"/><path d="M24 6v4M24 38v4M6 24h4M38 24h4M11.3 11.3l2.8 2.8M33.9 33.9l2.8 2.8M36.7 11.3l-2.8 2.8M14.1 33.9l-2.8 2.8"/>',
+  judgement: '<path d="M9 30l20-12v22L9 30z"/><path d="M29 20l9-5v17l-9-2"/><path d="M14 18c2-6 6-8 10-8M16 24c3-1 6-1 9 0"/>',
+  world: '<circle cx="24" cy="24" r="14"/><path d="M18 24c0-4 3-6 6-4s3 8 6 6 3-6 0-8"/><path d="M10 16c2 2 2 4 0 6M38 16c-2 2-2 4 0 6"/>'
+};
+
+/* ---------- 메이저 아르카나 22장 ---------- */
+const CARDS = [
+  {
+    id:'fool', num:'0', ko:'바보', en:'The Fool', icon:'fool',
+    up:{ keys:['새로운 시작','순수한 용기','자유'],
+      body:'아직 아무것도 정해지지 않은 백지 위에 선 사람의 카드예요. 겁이 없는 게 아니라 겁보다 설렘이 큰 상태라, 지금은 계산보다 첫걸음이 더 중요합니다.',
+      love:'상대를 재단하지 않고 있는 그대로 마주할 수 있는, 맑고 가벼운 인연의 기운이에요.',
+      relation:'처음 만나는 사람에게 마음을 열기 좋은 때이고, 오래된 관계도 새롭게 시작할 수 있어요.',
+      work:'경험이 없어도 일단 부딪혀 보라는 신호라, 새 업무나 새 자리를 두려워하지 않아도 좋아요.',
+      money:'큰돈보다 작은 씨앗에 투자할 때 운이 트이는 시기예요.',
+      advice:'완벽한 준비를 기다리지 말고, 오늘 할 수 있는 가장 작은 첫 단계 하나를 정해 보세요.' },
+    rev:{ keys:['무모함','준비 부족','망설임'],
+      body:'뛰어들고 싶은 마음만 앞서고 발밑은 확인하지 않은 모습이에요. 용기와 무모함은 종이 한 장 차이라, 서두른 만큼 되돌아오는 비용도 커집니다.',
+      love:'설렘이 급해져 상대의 속도를 놓치고 있지는 않은지 돌아볼 때예요.',
+      relation:'가까워지고 싶은 마음이 앞서 경계를 넘어서면 상대가 부담을 느낄 수 있어요.',
+      work:'준비 없이 벌인 일이 발목을 잡을 수 있으니 조건과 일정을 한 번 더 확인하세요.',
+      money:'즉흥적인 지출이나 즉석 투자는 한 박자 쉬어가는 게 좋아요.',
+      advice:'두려움 때문이 아니라 준비가 부족해서 망설여진다면, 딱 하루만 점검하는 시간을 가져 보세요.' }
+  },
+  {
+    id:'magician', num:'I', ko:'마법사', en:'The Magician', icon:'magician',
+    up:{ keys:['의지','창조','실행력'],
+      body:'하늘과 땅을 잇는 지팡이를 든 사람이, 이미 자기 손안에 도구를 다 갖고 있는 모습이에요. 없던 것을 기적처럼 만들기보다, 있는 재능을 지금 쓰기 시작할 때 결과가 따라옵니다.',
+      love:'먼저 다가가고 먼저 표현할 때 관계가 움직여요.',
+      relation:'내가 먼저 말을 걸고 판을 만들어야 관계가 풀립니다.',
+      work:'기획만 하던 일을 실제로 실행에 옮기면 능력을 알아봐 주는 사람이 나타납니다.',
+      money:'재능을 수익으로 바꾸는 아이디어가 실제 돈이 되는 시기예요.',
+      advice:'머릿속 구상 하나를 골라 오늘 안에 눈에 보이는 형태로 만들어 보세요.' },
+    rev:{ keys:['과신','산만함','말과 행동'],
+      body:'재주는 많은데 힘이 여기저기로 흩어져 있는 모습이에요. 말과 실제가 어긋나거나, 설득하는 기술이 오히려 신뢰를 깎을 수 있으니 자신을 과시하기보다 실력을 조용히 쌓는 편이 낫습니다.',
+      love:'말로만 하는 약속이나 밀당이 상대를 지치게 하고 있진 않은지 살펴보세요.',
+      relation:'그럴듯한 말보다 한 번의 행동이 신뢰를 만듭니다.',
+      work:'여러 일을 동시에 벌이다 어느 것도 마무리하지 못할 수 있어요.',
+      money:'그럴듯한 제안일수록 조건을 꼼꼼히 읽어야 하는 때예요.',
+      advice:'하고 있는 일 중 하나만 남기고 나머지는 잠시 내려놓아 보세요.' }
+  },
+  {
+    id:'priestess', num:'II', ko:'여사제', en:'The High Priestess', icon:'priestess',
+    up:{ keys:['직관','내면의 지혜','비밀'],
+      body:'두 기둥 사이에 앉아 아직 말하지 않은 진실을 품고 있는 카드예요. 답은 밖에서 찾는 게 아니라 이미 마음 깊은 곳에서 소곤거리고 있으니, 소란을 잠시 멈추고 그 목소리를 들어보세요.',
+      love:'상대의 말보다 표정과 분위기가 더 많은 것을 말해 주고 있어요.',
+      relation:'말하지 않은 감정이 관계의 공기를 만들고 있으니 분위기를 읽어 보세요.',
+      work:'아직 공개되지 않은 정보가 있으니 성급히 판단하지 말고 흐름을 지켜보세요.',
+      money:'조용히 준비하는 사람이 유리한 시기라, 계획은 혼자 다듬어 두세요.',
+      advice:'결정을 미루는 대신, 일주일만 아무에게도 말하지 않고 스스로 답을 적어 보세요.' },
+    rev:{ keys:['불안','외면','혼란'],
+      body:'직관이 두려움에 가려져 있거나, 반대로 알고 싶지 않은 진실을 외면하고 있는 모습이에요. 머리로는 알면서 마음이 따라가지 못해 같은 자리에서 맴돌 수 있습니다.',
+      love:'확인하고 싶은 마음이 커질수록 상대를 시험하게 되니 조심하세요.',
+      relation:'오해가 쌓였을 수 있으니 짐작 대신 직접 물어보세요.',
+      work:'정보가 부족한 채로 결론을 내리면 오해가 생길 수 있어요.',
+      money:'불안해서 급하게 결정한 돈 문제는 한 번 더 검토하세요.',
+      advice:'답을 서두르지 말고, 불안의 정체를 글로 적어 보는 것부터 시작하세요.' }
+  },
+  {
+    id:'empress', num:'III', ko:'여황제', en:'The Empress', icon:'empress',
+    up:{ keys:['풍요','사랑','돌봄'],
+      body:'곡식이 익어 가는 들판에 앉은 여인이, 주는 것만으로도 풍요로워지는 상태를 보여줘요. 사랑과 돌봄이 넘치는 시기라 관계도 일도 자연스럽게 결실을 맺습니다.',
+      love:'상대를 편안하게 만드는 따뜻함이 이 관계의 가장 큰 힘이에요.',
+      relation:'내가 베푸는 온기가 사람들을 내 곁에 머물게 합니다.',
+      work:'꾸준히 가꿔 온 일이 눈에 보이는 성과로 돌아오는 때입니다.',
+      money:'돈이 들어오는 길이 넓어지고 생활이 안정되는 흐름이에요.',
+      advice:'받는 것도 연습해 보세요. 주기만 하면 어느 순간 힘이 다 빠집니다.' },
+    rev:{ keys:['과보호','집착','소진'],
+      body:'돌보고 싶은 마음이 지나쳐 상대를 숨 막히게 하거나, 정작 나를 돌보지 못해 소진된 모습이에요. 사랑과 집착 사이의 선을 다시 그어야 하는 시기입니다.',
+      love:'상대를 위해서라는 말이 통제가 되지 않도록 주의하세요.',
+      relation:'모두를 챙기다 보면 정작 필요한 사람에게 마음이 닿지 못해요.',
+      work:'혼자 다 떠안고 있다면 일부는 나눠야 오래 갈 수 있어요.',
+      money:'기분 전환용 소비가 반복되고 있다면 지출 습관을 점검해 보세요.',
+      advice:'오늘 하루, 나를 위한 시간을 일정에 먼저 넣어 두세요.' }
+  },
+  {
+    id:'emperor', num:'IV', ko:'황제', en:'The Emperor', icon:'emperor',
+    up:{ keys:['안정','책임','질서'],
+      body:'튼튼한 왕좌에 앉아 규칙으로 세상을 지키는 카드예요. 감정보다 원칙이 필요한 때이고, 지금은 흔들리지 않는 태도 하나가 상황을 정리해 줍니다.',
+      love:'말보다 행동으로 책임지는 모습이 신뢰를 만들어요.',
+      relation:'관계의 경계와 역할을 분명히 하면 오히려 편안해집니다.',
+      work:'체계를 세우고 기준을 분명히 하면 인정받는 자리에 오를 수 있어요.',
+      money:'계획적인 관리가 재산을 지켜 주는 시기예요.',
+      advice:'감정적으로 반응하기 전에, 지켜야 할 기준을 먼저 정해 두세요.' },
+    rev:{ keys:['고집','통제','경직'],
+      body:'단단함이 고집으로, 책임감이 통제욕으로 굳어 있는 모습이에요. 옳고 그름을 따지기 전에 상대의 처지를 한 번 들어보면 막혀 있던 흐름이 풀립니다.',
+      love:'내 방식만 옳다고 밀어붙이면 상대는 조용히 마음을 닫아요.',
+      relation:'서운함을 참아 두면 어느 날 한꺼번에 터집니다. 그때그때 말하세요.',
+      work:'윗사람이나 규칙과 부딪히기 쉬우니 정면충돌보다 협상의 여지를 찾으세요.',
+      money:'지출을 지나치게 죄면 다른 곳에서 새는 돈이 생길 수 있어요.',
+      advice:'내가 꼭 지켜야 하는 것과 양보할 수 있는 것을 종이에 나눠 적어 보세요.' }
+  },
+  {
+    id:'hierophant', num:'V', ko:'교황', en:'The Hierophant', icon:'hierophant',
+    up:{ keys:['전통','신뢰','배움'],
+      body:'오래된 지혜를 이어온 스승이 두 제자에게 가르침을 전하는 카드예요. 검증된 방식과 조언이 힘이 되는 때이니, 혼자 판단하기보다 경험자에게 물어보세요.',
+      love:'주변의 인정과 안정적인 관계 형성이 중요한 시기예요.',
+      relation:'오래된 인연이나 윗사람의 조언이 실제로 도움이 됩니다.',
+      work:'조직의 규칙과 절차를 따르는 것이 오히려 빠른 길이 됩니다.',
+      money:'검증된 방법으로 관리하는 게 안전해요.',
+      advice:'이미 답을 아는 사람에게 정직하게 조언을 구해 보세요.' },
+    rev:{ keys:['형식','답답함','틀 깨기'],
+      body:'지켜야 할 형식이 오히려 나를 가두고 있다고 느끼는 모습이에요. 남들이 좋다고 하는 길이 나와 맞지 않을 수 있으니, 규칙을 따르되 내 기준은 따로 세워야 합니다.',
+      love:'주변의 시선 때문에 관계의 본심을 놓치고 있진 않은지 돌아보세요.',
+      relation:'체면 때문에 참는 일이 반복된다면 관계의 우선순위를 다시 정하세요.',
+      work:'관행이 비효율적이라면 개선안을 준비해 보되 순서는 지키세요.',
+      money:'남들이 하는 방식이 꼭 내게 맞는 건 아니에요.',
+      advice:'굳이 다르게 갈 필요는 없지만, 왜 따르는지는 설명할 수 있어야 해요.' }
+  },
+  {
+    id:'lovers', num:'VI', ko:'연인', en:'The Lovers', icon:'lovers',
+    up:{ keys:['사랑','선택','조화'],
+      body:'두 사람이 서로를 마주 보며 하나의 길을 택하는 카드예요. 마음이 통하는 연결과 함께, 인생의 중요한 선택 앞에 서 있다는 뜻이기도 합니다.',
+      love:'서로가 서로를 선택하는 흐름이라, 마음을 숨기지 않아도 좋아요.',
+      relation:'나와 잘 맞는 사람을 알아보는 눈이 지금 특히 밝아져 있어요.',
+      work:'함께할 사람을 고르거나 협업 조건을 정하기 좋은 때예요.',
+      money:'공동의 결정이나 계약은 서로의 몫을 분명히 하면 이로워요.',
+      advice:'두 마음이 있다면, 무엇을 더 원하는지보다 무엇을 덜 후회할지로 골라 보세요.' },
+    rev:{ keys:['갈등','우유부단','불균형'],
+      body:'마음과 마음이 엇갈리거나, 선택의 기로에서 결정을 미루고 있는 모습이에요. 한쪽만 애쓰는 관계는 오래 유지되기 어렵습니다.',
+      love:'상대의 마음을 확인하려는 일보다 내 마음을 먼저 정리하는 게 필요해요.',
+      relation:'한 사람과의 약속을 소홀히 하면서 다른 관계를 챙기고 있진 않은지 보세요.',
+      work:'협업에서 역할이 불분명하면 책임이 한쪽으로 몰릴 수 있어요.',
+      money:'공동 지출이나 계약은 구두 약속보다 문서로 남기세요.',
+      advice:'선택을 미룰수록 대신 시간이 선택하게 됩니다. 기한을 정해 두세요.' }
+  },
+  {
+    id:'chariot', num:'VII', ko:'전차', en:'The Chariot', icon:'chariot',
+    up:{ keys:['추진력','승리','집중'],
+      body:'서로 다른 두 힘을 고삐로 묶어 앞으로 달리는 카드예요. 감정과 이성이 모두 당신 편일 때, 속도가 곧 결과가 되는 시기입니다.',
+      love:'적극적으로 다가가는 쪽이 관계를 주도할 수 있어요.',
+      relation:'내가 원하는 방향으로 관계를 이끌어도 괜찮은 때예요.',
+      work:'목표를 하나로 좁히면 밀어붙이는 힘이 생깁니다.',
+      money:'한 방향으로 집중한 노력이 성과로 이어져요.',
+      advice:'목표를 딱 하나로 정하고, 나머지는 이번 달엔 미뤄 두세요.' },
+    rev:{ keys:['폭주','좌절','방향 상실'],
+      body:'속도를 내고는 있지만 고삐가 풀린 듯 방향이 흔들리는 모습이에요. 힘을 쓰는 만큼 성과가 나지 않으면 잠시 멈춰 목적지를 확인해야 합니다.',
+      love:'밀어붙이는 방식이 상대를 지치게 하고 있다면 속도를 늦추세요.',
+      relation:'서두르면 말이 앞서 나가 관계를 상하게 합니다. 한 번 쉬었다 말하세요.',
+      work:'과로나 무리한 일정으로 성과를 놓칠 수 있어요.',
+      money:'충동적으로 큰 결정을 내리지 말고 속도를 조절하세요.',
+      advice:'오늘은 전진보다 정비의 날로 정하고, 방향을 다시 그려 보세요.' }
+  },
+  {
+    id:'strength', num:'VIII', ko:'힘', en:'Strength', icon:'strength',
+    up:{ keys:['용기','인내','부드러운 힘'],
+      body:'사자를 쓰다듬어 길들이는 여인의 카드로, 이기는 힘이 아니라 견디고 다스리는 힘을 말해요. 감정을 누르지 않고 알아주는 것만으로 상황이 부드러워지는 시기입니다.',
+      love:'강한 요구보다 부드러운 인내가 상대의 마음을 엽니다.',
+      relation:'세게 나가기보다 한 걸음 물러서면 관계가 오히려 가까워져요.',
+      work:'당장의 성과보다 꾸준함이 더 크게 인정받는 때예요.',
+      money:'버티는 힘이 결국 이익이 되는 국면이에요.',
+      advice:'자신을 몰아붙이는 대신, 오늘 잘 견뎠다는 말을 스스로에게 해 주세요.' },
+    rev:{ keys:['자신감 저하','조급함','소진'],
+      body:'할 수 있다는 마음이 조금씩 깎여 자신감이 흔들리는 모습이에요. 감정을 억누르기만 하면 어느 순간 터지니, 약한 마음을 인정하는 것부터가 회복의 시작입니다.',
+      love:'상대 앞에서 괜찮은 척하는 마음이 관계를 멀게 하고 있어요.',
+      relation:'괜찮은 척하지 말고 힘들다고 말해도 관계는 무너지지 않습니다.',
+      work:'혼자 버티지 말고 도움을 요청해도 실력이 떨어지는 게 아니에요.',
+      money:'불안을 감추려는 과소비를 조심하세요.',
+      advice:'하루에 하나씩, 나를 편안하게 하는 작은 일을 챙겨 보세요.' }
+  },
+  {
+    id:'hermit', num:'IX', ko:'은둔자', en:'The Hermit', icon:'hermit',
+    up:{ keys:['성찰','지혜','잠시 멈춤'],
+      body:'한 사람이 등불을 들고 산 위로 홀로 올라가는 카드예요. 사람들 사이에서 얻지 못한 답을 혼자만의 시간에서 찾게 되는 시기입니다.',
+      love:'관계를 서두르기보다 나를 먼저 이해하는 시간이 필요해요.',
+      relation:'모임을 줄이고, 정말 통하는 한두 사람에게 집중해 보세요.',
+      work:'한 걸음 물러나 전체를 보면 지금까지 안 보이던 길이 보입니다.',
+      money:'조용히 정리하고 공부하듯 준비하는 게 유리해요.',
+      advice:'하루 30분이라도 아무도 없는 시간을 확보해 보세요.' },
+    rev:{ keys:['고립','회피','외로움'],
+      body:'혼자 있는 것이 휴식이 아니라 도피가 되어 가고 있는 모습이에요. 스스로를 고립시키면 문제는 해결되지 않고 마음속에서만 커집니다.',
+      love:'마음을 닫아 두면 상대는 다가갈 방법을 잃어요.',
+      relation:'연락을 미루고 있다면 먼저 안부를 물어보세요. 생각보다 쉽게 풀립니다.',
+      work:'혼자 결론을 내리지 말고 동료에게 상황을 공유해 보세요.',
+      money:'혼자 판단을 미루고 있는 돈 문제가 있다면 신뢰할 전문가에게 상담해 보세요.',
+      advice:'오늘 누군가에게 먼저 안부를 전해 보세요. 그 한 통이 문을 열어 줍니다.' }
+  },
+  {
+    id:'wheel', num:'X', ko:'운명의 수레바퀴', en:'Wheel of Fortune', icon:'wheel',
+    up:{ keys:['전환점','행운','순환'],
+      body:'돌고 도는 수레바퀴가 멈추지 않는 카드예요. 흐름이 바뀌는 지점에 서 있어서, 지금의 작은 선택이 한참 뒤의 운을 바꿉니다.',
+      love:'관계의 국면이 전환되는 시점이라, 예상하지 못한 인연이나 화해가 찾아올 수 있어요.',
+      relation:'사람 사이의 판이 새로 짜이는 때라, 인연이 자연스럽게 정리되고 채워집니다.',
+      work:'타이밍이 좋습니다. 기회가 보이면 망설이지 말고 손을 들어 보세요.',
+      money:'돈의 흐름이 트이는 때로, 들어오는 길이 열릴 수 있어요.',
+      advice:'흐름을 거스르지 말고, 와 있는 기회에 올라타세요.' },
+    rev:{ keys:['정체','타이밍','불안정'],
+      body:'수레바퀴가 멈춘 듯 같은 자리를 맴도는 모습이에요. 운의 문제가 아니라 아직 준비가 덜 된 타이밍이라, 조급함을 내려놓으면 다시 돌기 시작합니다.',
+      love:'지금은 밀어붙이기보다 상황이 무르익기를 기다리는 편이 나아요.',
+      relation:'애쓰면 애쓸수록 멀어지는 관계라면 잠시 거리를 두세요.',
+      work:'결과가 더딜 수 있지만 방향이 틀린 건 아닙니다.',
+      money:'큰 기대를 걸기보다 현금 흐름을 안정시키는 데 집중하세요.',
+      advice:'조급한 마음이 반복되는 실수를 만듭니다. 한 주만 기다려 보세요.' }
+  },
+  {
+    id:'justice', num:'XI', ko:'정의', en:'Justice', icon:'justice',
+    up:{ keys:['균형','공정','결과'],
+      body:'저울과 검을 든 카드로, 원인과 결과가 정직하게 돌아오는 때를 말해요. 지금은 감정보다 사실을 기준으로 판단할수록 유리합니다.',
+      love:'서로의 몫이 공평한지 돌아볼 시기예요.',
+      relation:'한쪽만 희생하는 관계라면 균형을 다시 맞춰야 합니다.',
+      work:'공정한 평가가 이루어지니 실력을 정직하게 보여 주세요.',
+      money:'수입과 지출의 균형을 맞추면 안정이 찾아옵니다.',
+      advice:'주장하기 전에 사실과 감정을 분리해서 적어 보세요.' },
+    rev:{ keys:['불균형','편향','회피'],
+      body:'한쪽으로 기울어진 판단이나, 마주하기 싫은 진실을 피하고 있는 모습이에요. 회피는 결과를 바꾸지 못하고 시간만 끌 뿐입니다.',
+      love:'서로에게 불공평한 부분이 있다면 솔직하게 말해야 해요.',
+      relation:'내가 참고 있는 것을 상대는 모르고 있을 수 있어요. 말해 주세요.',
+      work:'억울한 일이 있다면 감정이 아니라 기록과 근거로 대응하세요.',
+      money:'빌려준 돈이나 미룬 정산이 있다면 이번 주에 정리해 보세요.',
+      advice:'내 편을 드는 마음을 내려놓고, 상대 입장에서 한 번만 다시 생각해 보세요.' }
+  },
+  {
+    id:'hanged', num:'XII', ko:'매달린 사람', en:'The Hanged Man', icon:'hanged',
+    up:{ keys:['관점 전환','기다림','내려놓기'],
+      body:'거꾸로 매달려 있어도 표정이 평온한 카드예요. 멈춰 있는 게 아니라 세상을 다르게 보는 중이고, 지금은 애쓰지 않는 애씀을 해야 할 때입니다.',
+      love:'상대를 바꾸려 하기보다 내가 보는 방식을 바꾸면 관계가 달라져요.',
+      relation:'서운한 지점을 다른 각도에서 보면 이해되는 부분이 생깁니다.',
+      work:'잠시 멈춘 듯 보여도 안에서 정리되는 시간이에요.',
+      money:'지금의 지출을 줄이고 관망하는 게 이득이에요.',
+      advice:'해결하려 애쓰던 문제를 하루 동안 그냥 바라보기만 해 보세요.' },
+    rev:{ keys:['무의미한 인내','정체','집착'],
+      body:'의미 없는 희생을 반복하거나, 놓아야 할 것을 붙잡고 있는 모습이에요. 참는 것과 멈춰 있는 것은 다르다는 걸 기억해야 합니다.',
+      love:'한 사람을 기다리는 시간이 나를 지치게 하고 있다면 기준을 세우세요.',
+      relation:'이미 답이 나온 관계를 붙잡고 있다면 놓아줄 때가 된 거예요.',
+      work:'더 버텨도 달라지지 않는 일이라면 다른 길을 검토할 때예요.',
+      money:'회수될 가능성이 낮은 곳에 계속 돈을 넣고 있지 않은지 점검하세요.',
+      advice:'지금 붙잡고 있는 것 중 하나를 오늘 놓아 보세요.' }
+  },
+  {
+    id:'death', num:'XIII', ko:'죽음', en:'Death', icon:'death',
+    up:{ keys:['끝과 시작','정리','변환'],
+      body:'낫을 든 해골이 아니라, 낡은 것을 거두고 새 계절을 여는 카드예요. 무언가를 끝내는 것이 두렵지만, 그 끝이 다음 시작을 위한 자리를 비워 줍니다.',
+      love:'관계의 국면이 바뀌어야 다음 단계로 갈 수 있어요.',
+      relation:'오래된 관계의 역할이 바뀌는 때라, 서운함을 내려놓으면 편해집니다.',
+      work:'지금 하는 일의 방식을 과감히 바꿀 때 성장이 옵니다.',
+      money:'새는 지출을 정리하는 것이 새로운 수입보다 급해요.',
+      advice:'더 이상 나를 살리지 못하는 것 하나를 이번 주에 정리해 보세요.' },
+    rev:{ keys:['미련','변화 거부','지연'],
+      body:'끝났어야 할 일에 미련을 두고 시간을 붙잡고 있는 모습이에요. 변화를 미루면 같은 자리에서 더 큰 마찰을 만나게 됩니다.',
+      love:'이미 끝난 관계를 정리하지 못해 새 인연이 들어올 자리가 없어요.',
+      relation:'떠나야 할 사람을 붙잡고 있으면 서로가 더 상처받습니다.',
+      work:'바꾸기 싫은 마음이 기회를 놓치게 하고 있진 않은지 살펴보세요.',
+      money:'정리해야 할 고정지출을 계속 두고 있다면 이번 달에 손보세요.',
+      advice:'끝내는 연습을 해 보세요. 작은 정리 하나가 마음의 숨통을 틔워 줍니다.' }
+  },
+  {
+    id:'temperance', num:'XIV', ko:'절제', en:'Temperance', icon:'temperance',
+    up:{ keys:['조화','균형','회복'],
+      body:'두 컵 사이로 물이 고요히 오가는 카드예요. 극단으로 치우치지 않고 섞이고 조율하는 힘이 지금 가장 필요한 미덕입니다.',
+      love:'서로의 속도를 맞추면 관계가 편안해져요.',
+      relation:'가까운 사람과의 거리를 조금만 조절해도 관계가 오래갑니다.',
+      work:'무리하지 않고 꾸준히 하는 사람이 결국 앞섭니다.',
+      money:'들어오는 것과 나가는 것의 균형이 재산을 만듭니다.',
+      advice:'오늘 하루 딱 한 가지 습관만 정해 꾸준히 해 보세요.' },
+    rev:{ keys:['과함','불균형','조급함'],
+      body:'한쪽으로 지나치게 기울어 있거나, 조율 없이 급하게 몰아가는 모습이에요. 몸과 마음의 리듬이 깨졌다면 회복이 먼저입니다.',
+      love:'감정 기복이 관계의 온도를 흔들고 있어요. 말하기 전에 한 번 쉬어 가세요.',
+      relation:'한 사람에게만 쏠린 마음이나 시간이 다른 관계를 잠식하고 있진 않은지 보세요.',
+      work:'일과 휴식의 경계가 무너지면 성과도 무너집니다.',
+      money:'과소비나 과도한 절약 모두 균형을 깨뜨려요.',
+      advice:'잠, 식사, 움직임 중 하나만 오늘 정상으로 되돌려 보세요.' }
+  },
+  {
+    id:'devil', num:'XV', ko:'악마', en:'The Devil', icon:'devil',
+    up:{ keys:['유혹','집착','속박'],
+      body:'사슬에 묶인 두 사람이지만 목에 걸린 고리는 생각보다 헐겁다는 카드예요. 끊기 어려운 습관이나 관계에 끌리는 마음을 정직하게 들여다볼 때입니다.',
+      love:'그리움과 집착, 애착이 사랑과 섞여 있을 수 있어요.',
+      relation:'이용당하고 있다는 느낌이 든다면 그 관계의 규칙을 다시 보세요.',
+      work:'보상이나 조건에 묶여 본심과 다른 선택을 하고 있지 않은지 보세요.',
+      money:'쉽게 오는 돈일수록 대가가 따릅니다.',
+      advice:'지금 나를 묶고 있는 것이 무엇인지 이름을 붙여 보세요.' },
+    rev:{ keys:['해방','자각','정리'],
+      body:'스스로를 옭아매던 것에서 한 발짝 벗어나는 모습이에요. 고리를 끊는 건 의지보다 자각에서 시작됩니다.',
+      love:'집착에서 벗어나면 관계가 훨씬 가벼워져요.',
+      relation:'기대고 있던 관계에서 홀로 서는 연습이 시작됩니다.',
+      work:'부당한 조건이나 압박에서 벗어날 용기가 생기는 때예요.',
+      money:'빚이나 구독, 반복되는 지출을 정리하기 좋은 시기입니다.',
+      advice:'끊고 싶었던 것 하나를 오늘 공식적으로 중단해 보세요.' }
+  },
+  {
+    id:'tower', num:'XVI', ko:'탑', en:'The Tower', icon:'tower',
+    up:{ keys:['급변','충격','해체'],
+      body:'벼락을 맞은 탑에서 사람들이 뛰어내리는 카드예요. 갑작스러운 변화가 두렵지만, 무너진 것은 원래 오래 서 있을 수 없던 것이었습니다.',
+      love:'숨겨 두었던 감정이 터져 나올 수 있어요. 회피보다 정면 대화가 낫습니다.',
+      relation:'오해가 한 번에 드러나는 때라, 이참에 다 털어놓는 편이 낫습니다.',
+      work:'예상하지 못한 변수에 계획이 흔들릴 수 있으니 여유를 두세요.',
+      money:'갑작스러운 지출에 대비해 여윳돈을 남겨 두세요.',
+      advice:'변화를 막으려 하기보다, 무너진 자리에 무엇을 세울지 먼저 생각하세요.' },
+    rev:{ keys:['내적 변화','회피','완만한 균열'],
+      body:'큰 충격은 피했지만 안에서는 이미 균열이 가고 있는 모습이에요. 변화를 미루면 더 큰 소리가 날 수 있으니 작은 균열을 지금 고쳐야 합니다.',
+      love:'불편한 진실을 미루지 말고 지금 천천히 꺼내 보세요.',
+      relation:'작은 서운함을 넘기면 나중에 한꺼번에 터집니다.',
+      work:'위기를 미리 감지하고 대비하면 피해를 줄일 수 있어요.',
+      money:'지금 정리하면 손실을 줄일 수 있습니다.',
+      advice:'당장 무너뜨리지 않아도 됩니다. 다만 더는 외면하지 마세요.' }
+  },
+  {
+    id:'star', num:'XVII', ko:'별', en:'The Star', icon:'star',
+    up:{ keys:['희망','치유','영감'],
+      body:'밤하늘의 별 아래 물을 붓는 카드로, 어둠이 지난 뒤 조용히 찾아오는 회복을 말해요. 아직 멀어 보여도 방향은 맞으니 믿고 가면 됩니다.',
+      love:'서로에 대한 믿음이 관계를 밝혀 주는 시기예요.',
+      relation:'상처 준 사람과도 회복의 대화가 가능해집니다.',
+      work:'원하는 일에 대한 확신이 생기고 가능성이 열립니다.',
+      money:'작지만 꾸준한 수입의 씨앗이 보이기 시작해요.',
+      advice:'이루고 싶은 것을 구체적으로 적어 보고, 작은 진전을 기록하세요.' },
+    rev:{ keys:['실망','불신','기대 조정'],
+      body:'기대했던 만큼의 빛이 보이지 않아 마음이 흐려진 모습이에요. 희망이 사라진 게 아니라 기대치를 조정할 때입니다.',
+      love:'상대에 대한 실망이 쌓였다면, 기대를 낮추는 것과 포기하는 것은 달라요.',
+      relation:'실망했던 사람과의 거리를 정하는 것도 회복의 한 방법이에요.',
+      work:'결과가 더디더라도 지금 하는 일이 헛된 건 아닙니다.',
+      money:'기대 수익을 낮추고 현실적인 계획을 세우세요.',
+      advice:'멀리 있는 목표보다 오늘 해낸 작은 일에 초점을 맞춰 보세요.' }
+  },
+  {
+    id:'moon', num:'XVIII', ko:'달', en:'The Moon', icon:'moon',
+    up:{ keys:['불안','환상','잠재의식'],
+      body:'달빛 아래 개와 늑대가 울부짖는 카드로, 보이는 것이 전부가 아닌 때를 말해요. 불안은 실제 위험보다 상상에서 커지는 경우가 많습니다.',
+      love:'상대의 진심이 아직 다 보이지 않아 추측이 많아지는 시기예요.',
+      relation:'말하지 않은 것이 관계의 공기를 흐리고 있어요. 짐작 대신 확인하세요.',
+      work:'정보가 불완전하니 서두르지 말고 확인부터 하세요.',
+      money:'불명확한 조건의 제안은 보류하는 게 안전해요.',
+      advice:'불안을 키우는 상상과 확인 가능한 사실을 구분해서 적어 보세요.' },
+    rev:{ keys:['혼란 해소','진실','불면'],
+      body:'오해가 풀리거나 가려져 있던 진실이 서서히 드러나는 모습이에요. 혼란의 안개가 걷히면 판단이 훨씬 쉬워집니다.',
+      love:'숨겼던 것이 드러나 관계가 정리될 수 있지만, 그게 더 나은 방향이에요.',
+      relation:'오해하고 있던 부분이 풀리면 생각보다 쉽게 가까워집니다.',
+      work:'애매했던 상황이 명확해지니 결정을 내려도 좋아요.',
+      money:'막연했던 돈 문제의 윤곽이 잡히기 시작합니다.',
+      advice:'확인된 사실만 가지고 결정하세요. 추측은 잠시 접어 두세요.' }
+  },
+  {
+    id:'sun', num:'XIX', ko:'태양', en:'The Sun', icon:'sun',
+    up:{ keys:['성공','기쁨','활력'],
+      body:'아이와 말이 햇살 아래 달리는 카드로, 가장 밝고 힘찬 기운이에요. 숨기지 않아도 될 만큼 좋은 일이 눈에 보이게 나타납니다.',
+      love:'관계가 밝고 투명해지고, 주변이나 가족에게도 인정받는 흐름이에요.',
+      relation:'오해가 풀리고 사람들 사이에서 내 자리가 편안해집니다.',
+      work:'노력이 드러나 칭찬과 성과가 함께 오는 때입니다.',
+      money:'들어오는 돈이 늘고 기분 좋은 지출이 생겨요.',
+      advice:'기쁜 일이 생기면 숨기지 말고 주변에 나누세요. 운이 더 커집니다.' },
+    rev:{ keys:['지연된 기쁨','과시','자신감 저하'],
+      body:'빛이 조금 가려져 있지만 사라진 건 아니에요. 기쁨이 늦어질 뿐이지 결과가 뒤집히는 건 아니라서, 조바심만 내려놓으면 됩니다.',
+      love:'상대에게 잘 보이려는 마음이 지나치면 오히려 부담이 돼요.',
+      relation:'잘 보이려는 마음보다 솔직한 모습이 사람을 끌어당깁니다.',
+      work:'성과가 인정받는 데 시간이 걸릴 수 있어요. 꾸준히 보여 주세요.',
+      money:'과시성 소비를 줄이면 만족이 오래갑니다.',
+      advice:'잘된 일을 스스로 인정해 주세요. 자신감이 운을 부릅니다.' }
+  },
+  {
+    id:'judgement', num:'XX', ko:'심판', en:'Judgement', icon:'judgement',
+    up:{ keys:['각성','부활','결단'],
+      body:'나팔 소리에 잠들었던 사람들이 일어나는 카드로, 오래 미뤄 온 결단의 때를 뜻해요. 지난 시간이 헛되지 않았다는 확신이 들 겁니다.',
+      love:'끊어졌던 인연이 다시 이어지거나, 관계가 새 국면으로 들어서요.',
+      relation:'오래된 오해를 풀고 관계를 다시 세울 기회가 옵니다.',
+      work:'재도전이나 복귀, 새로운 제안이 들어오는 시기입니다.',
+      money:'과거의 정리를 통해 새 수입의 길이 열려요.',
+      advice:'미뤄 둔 그 결정을 오늘 안에 내려 보세요.' },
+    rev:{ keys:['자책','미련','회피'],
+      body:'스스로를 탓하며 지난 일에 머물러 있는 모습이에요. 자책은 결단을 대신하지 못하니, 과거를 인정하고 지금 할 수 있는 일로 돌아와야 합니다.',
+      love:'지난 관계의 기억에 새 사람을 견주고 있진 않은지 돌아보세요.',
+      relation:'이미 지난 일로 사람을 재단하고 있다면 한 번쯤 다시 보세요.',
+      work:'남의 평가에 마음이 흔들린다면 내 기준을 다시 세우세요.',
+      money:'후회하는 소비가 있다면 같은 일이 반복되지 않도록 장치를 만드세요.',
+      advice:'과거의 나를 탓하는 대신, 오늘의 나에게 할 일 하나를 정해 주세요.' }
+  },
+  {
+    id:'world', num:'XXI', ko:'세계', en:'The World', icon:'world',
+    up:{ keys:['완성','성취','순환'],
+      body:'화환 안에서 춤추는 사람의 카드로, 한 주기가 완성되어 다음 세계로 나아가는 순간이에요. 오래 바라던 일이 매듭지어지고 성취가 찾아옵니다.',
+      love:'관계가 한 단계 성숙해지고 안정된 결실을 맺는 시기예요.',
+      relation:'사람 사이의 오랜 숙제가 마무리되고 편안한 자리가 잡힙니다.',
+      work:'하던 일이 마무리되고 더 큰 무대로 옮겨 갈 기회가 와요.',
+      money:'목표한 금액에 가까워지고 재정이 안정됩니다.',
+      advice:'끝낸 일을 스스로 축하하고, 다음 여정을 천천히 그려 보세요.' },
+    rev:{ keys:['미완성','미련','다음 단계'],
+      body:'거의 다 왔는데 마지막 한 걸음이 남아 있는 모습이에요. 완성되지 못한 무언가가 마음 한켠을 붙잡고 있으니, 그 하나를 마무리하면 흐름이 열립니다.',
+      love:'관계에 아직 정리되지 않은 감정이 남아 있어요.',
+      relation:'마무리하지 못한 대화가 있다면 먼저 끝맺어 보세요.',
+      work:'마무리만 잘하면 평가가 달라집니다. 마지막 10%에 집중하세요.',
+      money:'받지 못한 정산이나 미뤄 둔 일을 정리하세요.',
+      advice:'거의 끝난 일 하나를 끝까지 마무리해 보세요. 그게 다음의 문을 엽니다.' }
+  }
+];
+
+/* ---------- 상담 분야 ---------- */
+const AREAS = {
+  love: {
+    label:'연애·재회', emoji:'💗',
+    scope:['마음은 상대에게 닿는 속도보다, 내가 나를 얼마나 편안하게 두는지에 달려 있어요.',
+           '관계는 정답을 맞히는 일이 아니라 온도를 맞추는 일이에요.',
+           '상대의 마음을 읽으려 애쓰기 전에, 내 마음이 어디를 향하는지 먼저 보세요.'],
+    actions:['오늘 바로 연락하기보다, 상대가 편안하게 답할 수 있는 짧은 안부부터 건네 보세요.',
+             '내가 원하는 관계의 모습을 세 줄로 적어 보세요. 기준이 생기면 흔들림이 줄어듭니다.',
+             '상대의 반응을 해석하려 애쓰지 말고, 내가 할 수 있는 표현 하나에 집중하세요.',
+             '상황을 잘 아는 친구에게 한 번만 말해 보세요. 혼자 상상하는 것보다 훨씬 정확해집니다.']
+  },
+  work: {
+    label:'직장·이직', emoji:'💼',
+    scope:['일은 재능보다 타이밍과 준비가 결과를 바꾸는 영역이에요.',
+           '지금의 답답함은 능력이 부족해서가 아니라 자리가 맞지 않아서일 수 있어요.',
+           '커리어는 한 번의 큰 결단보다 매일의 작은 선택으로 만들어집니다.'],
+    actions:['이번 주 안에 이력서나 포트폴리오에서 한 줄만 더 다듬어 두세요.',
+             '바꾸고 싶은 점을 상사에게 감정 없이 한 문장으로 정리해 보세요.',
+             '원하는 자리의 공고 3개를 저장해 두고 요구 역량을 비교해 보세요.',
+             '퇴근 후 30분을 내 일을 준비하는 시간으로 고정해 보세요.']
+  },
+  money: {
+    label:'금전·사업', emoji:'🪙',
+    scope:['돈은 크게 버는 순간보다 새지 않게 지키는 습관에서 달라져요.',
+           '사업은 속도보다 현금 흐름이 오래 살아남게 합니다.',
+           '지금의 선택은 한 달 뒤 통장이 아니라 1년 뒤의 나를 기준으로 판단해 보세요.'],
+    actions:['이번 달 고정지출을 한 번에 적어 보고, 줄일 항목 하나를 정하세요.',
+             '새 수입원은 크게 벌이기보다 작게 검증하는 방식으로 시작하세요.',
+             '큰 지출 전에 48시간을 두는 규칙을 만들어 두세요.',
+             '돈이 새는 곳을 막는 것만으로도 한 달에 몇만 원이 남습니다.']
+  },
+  relation: {
+    label:'인간관계', emoji:'🤝',
+    scope:['관계는 가까움보다 편안함이 오래가는 쪽으로 흘러요.',
+           '사람을 바꾸려는 마음보다 거리를 조절하는 지혜가 필요할 때예요.',
+           '서운함은 쌓아 두면 관계가 아니라 나를 먼저 망칩니다.'],
+    actions:['서운했던 일은 감정 대신 상황-행동-부탁 순서로 말해 보세요.',
+             '연락이 뜸했던 사람에게 짧은 안부를 먼저 전해 보세요.',
+             '모든 사람과 가까워지려 하지 말고, 에너지를 나눌 사람을 골라 보세요.',
+             '거절해야 할 일은 미루지 말고 한 번에 분명하게 말하세요.']
+  },
+  general: {
+    label:'종합운', emoji:'🌌',
+    scope:['운은 큰 사건보다 지금 어디에 마음을 두는지에서 갈라져요.',
+           '지금은 여러 영역이 함께 움직이는 때라, 하나를 정리하면 나머지도 따라옵니다.',
+           '흐름을 바꾸고 싶다면 가장 작은 습관 하나부터 바꿔 보세요.'],
+    actions:['이번 주에 정리하고 싶은 것 하나를 정해 작게 시작해 보세요.',
+             '결정을 미루고 있는 일이 있다면 기한을 먼저 정하세요.',
+             '몸을 움직이는 시간 20분이 생각보다 판단을 맑게 합니다.',
+             '하루 끝에 잘된 일 세 가지를 적어 보세요. 흐름을 보는 눈이 달라집니다.']
+  }
+};
+
+/* ---------- 스프레드 ---------- */
+const SPREADS = {
+  one: { label:'1장 · 핵심 원카드', cardLabel:'핵심 카드', positions:[
+    {key:'one', label:'핵심 카드', short:'핵심', note:'지금 질문의 중심에 있는 카드예요.'}
+  ]},
+  ppf: { label:'3장 · 과거·현재·미래', positions:[
+    {key:'past', label:'과거', short:'과거', note:'이 흐름은 지금의 바탕이 되어 왔어요.'},
+    {key:'present', label:'현재', short:'현재', note:'지금 가장 크게 작용하고 있는 힘이에요.'},
+    {key:'future', label:'미래', short:'미래', note:'지금의 선택이 이어질 때 다가올 모습이에요.'}
+  ]},
+  csr: { label:'3장 · 현재상황·조언·결과', positions:[
+    {key:'situation', label:'현재 상황', short:'현재', note:'지금 놓인 자리를 그대로 비추고 있어요.'},
+    {key:'advice', label:'조언', short:'조언', note:'카드가 건네는 처방이에요.'},
+    {key:'result', label:'결과', short:'결과', note:'이대로 흘러갈 때의 결과예요.'}
+  ]}
+};
+
+/* ---------- 질문 키워드 ---------- */
+const TOPICS = [
+  {topic:'재회', re:/(재회|다시 만나|돌아와|돌아올|헤어진|전남친|전여친|전 남자친구|전 여자친구|이별 후)/,
+   line:'그 사람과의 시간을 아직 정리하지 못한 마음이 카드에 비쳐요.'},
+  {topic:'이별', re:/(이별|헤어졌|헤어지|끝났|차였|차버)/,
+   line:'끝을 받아들이는 과정이 아직 진행 중이라는 게 카드에 보여요.'},
+  {topic:'짝사랑', re:/(짝사랑|좋아하는 사람|고백|마음을 표현|썸)/,
+   line:'말하지 못한 마음이 관계의 방향을 정하고 있어요.'},
+  {topic:'결혼', re:/(결혼|프로포즈|상견례|혼인|배우자)/,
+   line:'관계의 다음 단계를 두고 마음이 분주한 상태로 읽혀요.'},
+  {topic:'연애', re:/(연애|연인|애인|소개팅|만남|썸)/,
+   line:'관계의 온도와 속도를 함께 살펴볼 필요가 있어요.'},
+  {topic:'이직', re:/(이직|옮기|회사 옮|새 직장|자리 옮)/,
+   line:'지금 자리를 떠나는 일에 대한 기대와 두려움이 함께 있어요.'},
+  {topic:'퇴사', re:/(퇴사|그만두|관두|사표)/,
+   line:'버티는 것과 내려놓는 것 사이에서 오래 고민해 오셨네요.'},
+  {topic:'취업', re:/(취업|면접|입사|공고|지원서|합격)/,
+   line:'기회를 잡기 위한 준비가 지금 어느 지점에 있는지가 관건이에요.'},
+  {topic:'승진', re:/(승진|진급|인정|평가|연봉협상|연봉)/,
+   line:'노력에 대한 보상이 제때 돌아올지가 마음에 걸려 있는 것 같아요.'},
+  {topic:'직장', re:/(직장|회사|상사|동료|업무|야근)/,
+   line:'일에서 오는 피로가 사적인 마음까지 짓누르고 있어요.'},
+  {topic:'사업', re:/(사업|창업|가게|장사|매출|오픈|쇼핑몰|스마트스토어|온라인 판매|사업자)/,
+   line:'시작과 유지 사이에서 계산과 배짱이 함께 필요한 시점이에요.'},
+  {topic:'투자', re:/(투자|주식|코인|부동산|재테크)/,
+   line:'기대 수익만큼 위험을 견딜 준비가 되어 있는지가 핵심이에요.'},
+  {topic:'돈', re:/(돈|금전|수입|월급|생활비|빚|대출|적금|저축)/,
+   line:'돈의 흐름을 정리하는 일이 다른 고민까지 함께 풀어 줍니다.'},
+  {topic:'부업', re:/(부업|N잡|투잡|수익|판매|전자책|크몽)/,
+   line:'새 수입을 만들고 싶은 마음과 지금 여력 사이의 균형이 보여요.'},
+  {topic:'시험', re:/(시험|자격증|공부|합격|유학|대학원|논문)/,
+   line:'쌓아 온 시간이 결과로 이어질 수 있을지가 마음의 중심에 있어요.'},
+  {topic:'건강', re:/(건강|아프|병원|수술|다이어트|불면)/,
+   line:'몸이 보내는 신호를 카드가 대신 짚어 주고 있어요.'},
+  {topic:'가족', re:/(가족|부모|엄마|아빠|형제|자매|아이|자녀)/,
+   line:'가까운 사이일수록 말하지 못한 마음이 쌓여 있어요.'},
+  {topic:'친구', re:/(친구|동창|모임|사람들)/,
+   line:'관계의 거리와 역할을 다시 정할 때가 된 것 같아요.'},
+  {topic:'이사', re:/(이사|집|주거|전세|월세)/,
+   line:'환경을 바꾸고 싶은 마음이 생각보다 크게 자리하고 있어요.'},
+  {topic:'선택', re:/(선택|고민|결정|어떡|어떻게|갈림길|망설)/,
+   line:'두 갈래 앞에서 마음은 이미 기울어 있는데 확신이 없는 상태예요.'}
+];
+
+/* 질문의 주된 고민을 고르기 위한 우선순위 (구체적인 주제일수록 높음) */
+const TOPIC_PRIORITY = {
+  '재회':10, '이직':10, '사업':10, '이별':9, '퇴사':9, '투자':9,
+  '짝사랑':8, '결혼':8, '취업':8, '부업':8, '시험':8,
+  '승진':7, '건강':7, '가족':7, '연애':6, '돈':6, '이사':6,
+  '직장':5, '친구':5, '선택':4
+};
+
+/* ---------- 유틸 ---------- */
+function hashStr(s){
+  let h = 2166136261;
+  for(let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function makeRng(seed){
+  let a = seed >>> 0;
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function pickBy(rng, arr){ return arr[Math.floor(rng() * arr.length) % arr.length]; }
+function lastHangulCode(word){
+  const s = String(word || '');
+  for(let i=s.length-1;i>=0;i--){
+    const c = s.charCodeAt(i);
+    if(c >= 0xAC00 && c <= 0xD7A3) return c;
+  }
+  return -1;
+}
+function hasBatchim(word){
+  const c = lastHangulCode(word);
+  if(c < 0) return false;
+  return (c - 0xAC00) % 28 !== 0;
+}
+/* 조사: 은/는, 이/가, 을/를, 과/와 */
+function josa(word, kind){
+  const b = hasBatchim(word);
+  if(kind === 'eun') return word + (b ? '은' : '는');
+  if(kind === 'i')   return word + (b ? '이' : '가');
+  if(kind === 'eul') return word + (b ? '을' : '를');
+  if(kind === 'gwa') return word + (b ? '과' : '와');
+  if(kind === 'ro'){
+    const c = lastHangulCode(word);
+    const jong = c < 0 ? 0 : (c - 0xAC00) % 28;
+    return word + ((jong === 0 || jong === 8) ? '로' : '으로');
+  }
+  return word;
+}
+function escHTML(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+/* ---------- 카드 뽑기 ---------- */
+function drawCards(spreadKey, rng){
+  const count = SPREADS[spreadKey].positions.length;
+  const pool = CARDS.slice();
+  const random = rng || Math.random;
+  for(let i=pool.length-1;i>0;i--){
+    const j = Math.floor(random() * (i+1));
+    const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+  }
+  const out = [];
+  for(let i=0;i<count;i++){
+    out.push({ card: pool[i], reversed: random() < 0.5 });
+  }
+  return out;
+}
+
+/* ---------- 생년월일 → 수비학 ---------- */
+const LIFE_PATH = {
+  1:'스스로 길을 여는 개척자의 기운', 2:'사람을 잇고 조율하는 기운', 3:'표현하고 나누는 기운',
+  4:'차곡차곡 쌓아 안정을 만드는 기운', 5:'변화와 자유를 타고난 기운', 6:'돌보고 책임지는 기운',
+  7:'깊이 파고들어 답을 찾는 기운', 8:'성취와 관리에 강한 기운', 9:'넓게 품고 나누는 기운',
+  11:'직관이 밝은 기운', 22:'큰 그림을 실제로 세우는 기운'
+};
+function lifePathNumber(birth){
+  if(!birth) return 0;
+  const digits = String(birth).replace(/\D/g,'');
+  if(!digits) return 0;
+  let sum = 0;
+  for(let i=0;i<digits.length;i++) sum += Number(digits[i]);
+  while(sum > 9 && sum !== 11 && sum !== 22){
+    let s = 0;
+    while(sum > 0){ s += sum % 10; sum = Math.floor(sum / 10); }
+    sum = s;
+  }
+  return sum;
+}
+
+/* ---------- 질문에서 주제 추출 ---------- */
+function extractTopics(question){
+  if(!question) return [];
+  /* '남자친구'의 '친구'가 친구 고민으로 잡히지 않도록 먼저 치환 */
+  const q = String(question)
+    .replace(/남자\s?친구|여자\s?친구|남친|여친|전\s?애인/g, '연인');
+  const found = [];
+  for(let i=0;i<TOPICS.length;i++){
+    if(TOPICS[i].re.test(q)) found.push(TOPICS[i]);
+  }
+  found.sort(function(a, b){
+    return (TOPIC_PRIORITY[b.topic] || 0) - (TOPIC_PRIORITY[a.topic] || 0);
+  });
+  return found.slice(0, 3);
+}
+
+/* ---------- 상태 정리 ---------- */
+function normalizeState(input){
+  const s = {
+    name: (input.name || '').trim() || '고객',
+    birth: input.birth || '',
+    gender: input.gender || '',
+    area: AREAS[input.area] ? input.area : 'general',
+    spread: SPREADS[input.spread] ? input.spread : 'ppf',
+    question: (input.question || '').trim(),
+    cards: input.cards || []
+  };
+  s.topics = extractTopics(s.question);
+  s.lifePath = lifePathNumber(s.birth);
+  return s;
+}
+
+/* ---------- 리딩 생성 (내장 엔진) ---------- */
+function buildReading(state){
+  const area = AREAS[state.area];
+  const spread = SPREADS[state.spread];
+  const name = state.name;
+  const seed = hashStr(name + '|' + state.area + '|' + state.spread + '|' + state.question + '|' +
+                        state.cards.map(function(c){ return c.card.id + (c.reversed?'R':'U'); }).join(','));
+  const rng = makeRng(seed);
+  const n = state.cards.length;
+  const uplift = state.cards.filter(function(c){ return !c.reversed; }).length;
+  const revCount = n - uplift;
+  const lensKey = state.area;
+
+  function lens(c){ return c.card[c.reversed ? 'rev' : 'up'][lensKey] || c.card[c.reversed ? 'rev' : 'up'].body; }
+  function keys(c){ return c.card[c.reversed ? 'rev' : 'up'].keys; }
+
+  /* --- 카드별 --- */
+  const notes = state.cards.map(function(c, i){
+    const pos = spread.positions[i];
+    const orient = c.reversed ? '역방향' : '정방향';
+    const body = c.card[c.reversed ? 'rev' : 'up'].body;
+    let text = body + ' ' + lens(c);
+    if(n === 1){
+      text += ' 한 장으로 보는 리딩이라, 이 카드의 말이 질문 전체에 그대로 적용됩니다.';
+    } else {
+      text += ' ' + pos.note;
+    }
+    return {
+      pos: pos.label, orient: orient, ko: c.card.ko, en: c.card.en,
+      numeral: c.card.num, icon: c.card.icon, reversed: c.reversed,
+      keys: keys(c).join(' · '), text: text, body: body
+    };
+  });
+
+  /* --- 지금의 흐름 --- */
+  const focus = state.cards[Math.min(1, n - 1)];
+  const focusCard = focus.card;
+  const focusOrient = focus.reversed ? 'rev' : 'up';
+  const focusKeys = focusCard[focusOrient].keys;
+
+  let orientLine;
+  if(n === 1){
+    orientLine = focus.reversed
+      ? '카드 한 장이 역방향으로 놓였어요. 겉으로 보이는 상황과 안에서 느끼는 것이 조금 다를 수 있다는 뜻이에요.'
+      : '카드 한 장이 정방향으로 놓였어요. 지금의 흐름이 막힘없이 앞을 향하고 있다는 뜻이에요.';
+  } else if(revCount === 0){
+    orientLine = '세 장 모두 정방향으로 서 있어요. 막힌 곳 없이 흐름이 열려 있는 상태라, 지금은 미루지 않고 움직이는 쪽이 이깁니다.';
+  } else if(uplift === 0){
+    orientLine = '세 장이 모두 역방향이에요. 겉으로는 더뎌 보여도 안쪽에서 정리되는 중이니, 밀어붙이기보다 숨을 고르는 편이 좋아요.';
+  } else {
+    orientLine = '정방향 ' + uplift + '장, 역방향 ' + revCount + '장이 섞여 있어요. 열린 문과 잠긴 문이 함께 있으니, 어디에 먼저 힘을 쓸지 순서를 정하는 게 관건입니다.';
+  }
+
+  const flowLines = [];
+  flowLines.push(orientLine);
+  flowLines.push('지금 중심에는 <strong>' + escHTML(focusCard.ko) + '</strong> 카드가' + (focus.reversed ? ' 역방향으로' : '') +
+                 ' 놓여 있어요. ' + focusKeys.slice(0, 2).join('·') + '의 기운이 흐르고 있습니다. ' + pickBy(rng, area.scope));
+
+  if(n >= 2){
+    flowLines.push(state.spread === 'csr'
+      ? '현재 상황과 조언, 결과가 한 줄로 이어지는 배열이에요. 조언 카드의 말을 행동으로 옮길 때 결과가 달라집니다.'
+      : '과거의 카드가 지금의 바탕을, 현재의 카드가 지금의 온도를, 미래의 카드가 앞으로의 방향을 보여 주고 있어요.');
+  }
+
+  /* --- 종합 리딩 --- */
+  const synth = [];
+  if(n === 1){
+    synth.push("'" + focusCard.ko + "' 한 장이 이 질문에 대한 답의 중심을 담고 있어요. " +
+               (focus.reversed ? '역방향인 만큼, 지금은 밀어붙이기보다 안쪽을 정리하는 쪽에 답이 있습니다.'
+                              : '정방향인 만큼, 지금의 방향을 크게 의심하지 않아도 됩니다.'));
+  } else {
+    let bridge;
+    if(revCount === 0){
+      bridge = '카드들이 같은 방향을 가리키고 있어, 지금 느끼는 예감이 크게 틀리지 않았을 거예요.';
+    } else if(uplift === 0){
+      bridge = '세 장이 모두 안쪽을 향하고 있어요. 겉으로 드러난 일보다 마음속 정리가 먼저 필요한 때입니다.';
+    } else {
+      bridge = pickBy(rng, [
+        '한 장은 밀라고, 한 장은 잠시 멈추라고 말하고 있어요. 어느 쪽이 더 급한지가 이 리딩의 열쇠입니다.',
+        '앞의 두 장이 상황을 만들고, 마지막 한 장이 그 결과를 보여 주는 구조예요.'
+      ]);
+    }
+    synth.push("'" + state.cards[0].card.ko + "'에서 시작한 흐름이 " + josa("'" + state.cards[1].card.ko + "'", 'eul') + " 지나 " + josa("'" + state.cards[n-1].card.ko + "'", 'ro') + " 이어집니다. " + bridge);
+  }
+
+  /* 방향성 한 줄 */
+  if(uplift > revCount){
+    synth.push('질문하신 일은 지금의 방향을 유지하면 풀릴 쪽에 무게가 실려 있어요. 다만 카드가 말한 조건을 지킬 때의 이야기입니다.');
+  } else if(revCount > uplift){
+    synth.push('지금은 밀어붙이기보다 상황을 정리하는 쪽에 무게가 실려 있어요. 서두르면 같은 자리를 다시 돌게 됩니다.');
+  } else {
+    synth.push('가능성과 유보가 반반으로 놓여 있어요. 어느 쪽으로 기울지는 앞으로의 선택에 달려 있습니다.');
+  }
+
+  if(state.topics.length){
+    const t = state.topics[0];
+    synth.push('사연에서 읽히는 \'' + t.topic + '\' 이야기는 \'' + focusKeys[0] + '\'의 기운과 맞닿아 있어요. ' + t.line);
+  } else if(state.question){
+    synth.push('질문에 담긴 마음의 무게가 \'' + focusKeys[0] + '\' 쪽으로 기울어 있어요. 그 무게가 어디서 왔는지 한 번 짚어 보면 답이 선명해집니다.');
+  }
+
+  if(state.lifePath){
+    synth.push(name + '님은 생년월일 기준으로 ' + state.lifePath + '번의 기운(' + LIFE_PATH[state.lifePath] + ')을 타고났어요. 이 기운은 카드가 말하는 ' + josa("'" + focusKeys[0] + "'", 'eul') + ' 현실로 옮기는 방식에도 드러납니다.');
+  }
+
+  /* --- 조언 --- */
+  const advice = [];
+  const adviceCard = (state.spread === 'csr') ? state.cards[1] : focus;
+  advice.push(adviceCard.card[adviceCard.reversed ? 'rev' : 'up'].advice);
+  const areaActions = area.actions.slice();
+  while(areaActions.length){
+    const idx = Math.floor(rng() * areaActions.length);
+    const a = areaActions.splice(idx, 1)[0];
+    if(advice.indexOf(a) === -1) advice.push(a);
+    if(advice.length >= 3) break;
+  }
+  const revCard = state.cards.filter(function(c){ return c.reversed; })[0];
+  if(advice.length < 3 && revCard){
+    const a = revCard.card.rev.advice;
+    if(advice.indexOf(a) === -1) advice.push(a);
+  }
+
+  /* --- 마무리 --- */
+  const closes = [
+    name + '님의 카드는 정답보다 방향을 말해 주고 있어요. 오늘의 작은 선택 하나가 다음 카드를 바꿉니다.',
+    '카드는 미래를 정해 두지 않아요. 다만 지금 어디에 마음을 두면 좋을지는 알려줍니다. ' + name + '님의 속도대로 가셔도 괜찮아요.',
+    '이 리딩이 마음의 정리가 되는 하루가 되길 바랄게요. ' + name + '님은 이미 충분히 잘 해내고 있어요.',
+    '좋은 흐름은 서두르지 않아도 옵니다. ' + name + '님이 편안해지는 쪽을 고르면 그게 답이에요.'
+  ];
+  const closing = pickBy(rng, closes);
+
+  /* --- 답장 텍스트 --- */
+  const today = new Date();
+  const dateStr = today.getFullYear() + '.' + String(today.getMonth()+1).padStart(2,'0') + '.' + String(today.getDate()).padStart(2,'0');
+  const reply = [];
+  reply.push('🔮 ' + name + '님의 ' + area.label + ' 타로 리딩');
+  reply.push('');
+  reply.push('안녕하세요, ' + name + '님. 보내주신 사연을 읽고 ' + spread.label + '로 카드를 펼쳐봤어요.');
+  if(state.topics.length) reply.push('\'' + state.topics[0].topic + '\'에 대한 마음이 크게 담겨 있어서, 그 부분을 중심으로 읽었습니다.');
+  reply.push('');
+  reply.push('📌 오늘의 한 줄');
+  reply.push('지금 흐름은 \'' + focusKeys[0] + '\' 쪽에 무게가 실려 있어요. ' +
+             (focus.reversed ? '카드가 역방향이라, 겉으로 밀어붙이기보다 안쪽을 정리할 때 풀립니다.'
+                             : '카드가 정방향이라, 지금의 방향을 크게 의심하지 않아도 됩니다.'));
+  reply.push('');
+  reply.push('🃏 뽑힌 카드');
+  notes.forEach(function(nt, i){
+    reply.push((i+1) + '. ' + nt.pos + ' — ' + nt.ko + ' (' + nt.orient + ') · ' + nt.keys);
+  });
+  reply.push('');
+  reply.push('📖 카드별 해설');
+  notes.forEach(function(nt){
+    reply.push('[' + nt.pos + '] ' + nt.ko + ' (' + nt.orient + ')');
+    reply.push(nt.text);
+    reply.push('');
+  });
+  reply.push('✨ 종합 리딩');
+  synth.forEach(function(line){ reply.push(line); });
+  reply.push('');
+  reply.push('💌 지금 해보시면 좋은 것');
+  advice.forEach(function(a, i){ reply.push((i+1) + '. ' + a); });
+  reply.push('');
+  reply.push('🌙 ' + closing);
+  reply.push('');
+  reply.push('※ 본 리딩은 자기성찰과 오락을 위한 참고 자료이며, 의료·법률·투자 판단을 대신하지 않습니다.');
+
+  return {
+    dateStr: dateStr,
+    areaLabel: area.label, areaEmoji: area.emoji,
+    spreadLabel: spread.label,
+    notes: notes, flow: flowLines, synthesis: synth, advice: advice, closing: closing,
+    uplift: uplift, revCount: revCount, topic: state.topics.length ? state.topics[0].topic : '',
+    replyText: reply.join('\n')
+  };
+}
+
+/* ---------- 프롬프트 ---------- */
+function buildPrompt(state){
+  const area = AREAS[state.area];
+  const spread = SPREADS[state.spread];
+  const lines = [];
+  lines.push('[고객 정보]');
+  lines.push('이름: ' + state.name);
+  if(state.birth) lines.push('생년월일: ' + state.birth);
+  if(state.gender) lines.push('성별: ' + state.gender);
+  lines.push('상담 분야: ' + area.label);
+  lines.push('스프레드: ' + spread.label);
+  if(state.question) lines.push('질문/사연: ' + state.question);
+  else lines.push('질문/사연: (따로 적지 않음 — 분야 중심으로 종합 해설)');
+  lines.push('');
+  lines.push('[뽑힌 카드]');
+  state.cards.forEach(function(c, i){
+    const pos = spread.positions[i];
+    const o = c.reversed ? 'rev' : 'up';
+    lines.push((i+1) + '. ' + pos.label + ' — ' + c.card.ko + ' (' + (c.reversed ? '역방향' : '정방향') + ', ' + c.card.en + ') / 핵심 키워드: ' + c.card[o].keys.join(', '));
+  });
+  lines.push('');
+  lines.push('[요청]');
+  lines.push('아래 형식으로 작성해 주세요.');
+  lines.push('1) 한 줄 총평');
+  lines.push('2) 카드별 해설 — 위치별로 2~3문장, 카드의 상징과 정/역방향을 근거로');
+  lines.push('3) 종합 리딩 — 카드들을 하나의 이야기로 엮어서 3~4문장');
+  lines.push('4) 지금 해보면 좋은 것 — 현실적으로 실천 가능한 3가지');
+  lines.push('5) 따뜻한 마무리 한 문장');
+
+  const system = [
+    '당신은 20년 경력의 타로 마스터입니다. 한국어로 따뜻하고 구체적인 상담 리딩을 씁니다.',
+    '규칙:',
+    '- 정중한 존댓말(~요, ~습니다)로 쓰고, 고객을 "' + state.name + '님"이라고 부릅니다.',
+    '- 뽑힌 카드와 정/역방향을 모두 근거로 삼고, 카드의 상징을 이야기 속에 자연스럽게 녹입니다.',
+    '- 단정적인 미래 예언, 협박, 공포 조장은 하지 않습니다. 선택지는 고객에게 남겨 둡니다.',
+    '- 의료·법률·투자에 대한 확답은 피하고, 필요하면 전문가 상담을 권합니다.',
+    '- 분량은 700~1000자, 문단은 4~6개로 나눕니다.',
+    '- 이모지는 섹션 제목에만 2~4개 사용합니다.',
+    '- 마지막에 "본 리딩은 참고용"임을 한 줄로 밝힙니다.'
+  ].join('\n');
+
+  const user = lines.join('\n');
+  return { system: system, user: user, full: '[SYSTEM]\n' + system + '\n\n[USER]\n' + user };
+}
+
+/* ---------- 결과 HTML ---------- */
+function buildResultHTML(state, reading){
+  const parts = [];
+  parts.push('<div class="reading-head">');
+  parts.push('  <p class="eyebrow">Tarot Reading · ' + escHTML(reading.dateStr) + '</p>');
+  parts.push('  <h2><span class="name">' + escHTML(state.name) + '</span>님의 ' + escHTML(reading.areaLabel) + '</h2>');
+  parts.push('  <div class="meta-chips">' +
+             '<span>' + escHTML(reading.areaEmoji) + ' ' + escHTML(reading.areaLabel) + '</span>' +
+             '<span>🌙 ' + escHTML(reading.spreadLabel) + '</span>' +
+             '<span>🃏 정방향 ' + reading.uplift + ' · 역방향 ' + reading.revCount + '</span>' +
+             '</div>');
+  parts.push('</div>');
+
+  parts.push('<div class="cards-row">');
+  reading.notes.forEach(function(nt, i){
+    parts.push('<div class="card-slot">');
+    parts.push('<span class="pos-label">' + escHTML(nt.pos) + '</span>');
+    parts.push('<div class="tarot-card' + (nt.reversed ? ' rev' : '') + '" style="animation-delay:' + (i * 0.16) + 's">');
+    parts.push('<div class="card-art">');
+    parts.push('<span class="numeral">' + escHTML(nt.numeral) + '</span>');
+    parts.push('<span class="card-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' + ICONS[nt.icon] + '</svg></span>');
+    parts.push('<div class="card-name"><div class="ko">' + escHTML(nt.ko) + '</div><div class="en">' + escHTML(nt.en) + '</div><div class="rule"></div><div class="card-keys">' + nt.keys.split(' · ').map(function(k){ return '<i>' + escHTML(k) + '</i>'; }).join('') + '</div></div>');
+    parts.push('</div></div>');
+    parts.push('<span class="orient' + (nt.reversed ? ' rev' : '') + '">' + (nt.reversed ? '역방향' : '정방향') + '</span>');
+    parts.push('</div>');
+  });
+  parts.push('</div>');
+
+  parts.push('<article class="reading-body">');
+  parts.push('<section class="block"><h3>🌙 지금의 흐름</h3>');
+  reading.flow.forEach(function(p){ parts.push('<p>' + p + '</p>'); });
+  parts.push('</section>');
+
+  parts.push('<section class="block"><h3>🃏 카드별 해설</h3>');
+  reading.notes.forEach(function(nt){
+    parts.push('<div class="card-note">');
+    parts.push('<div class="card-note-head"><span class="pos">' + escHTML(nt.pos) + '</span><strong>' + escHTML(nt.ko) + '</strong><em>' + escHTML(nt.orient) + ' · ' + escHTML(nt.keys) + '</em></div>');
+    parts.push('<p>' + escHTML(nt.text) + '</p>');
+    parts.push('</div>');
+  });
+  parts.push('</section>');
+
+  parts.push('<section class="block"><h3>✨ 종합 리딩</h3>');
+  reading.synthesis.forEach(function(p){ parts.push('<p>' + escHTML(p) + '</p>'); });
+  parts.push('</section>');
+
+  parts.push('<section class="block"><h3>💌 지금 해보시면 좋은 것</h3><ul class="advice-list">');
+  reading.advice.forEach(function(a, i){
+    parts.push('<li><span class="no">' + String(i+1).padStart(2,'0') + '</span><span>' + escHTML(a) + '</span></li>');
+  });
+  parts.push('</ul></section>');
+
+  parts.push('<div class="closing"><p>' + escHTML(reading.closing) + '</p></div>');
+  parts.push('<p class="disclaimer">※ 본 리딩은 자기성찰과 오락을 위한 참고 자료이며, 의료·법률·투자 판단을 대신하지 않습니다.</p>');
+  parts.push('</article>');
+
+  parts.push('<div class="actions">');
+  parts.push('<button type="button" class="btn main" id="copyReply">📋 고객 답장 복사</button>');
+  parts.push('<button type="button" class="btn ghost" id="copyPromptBtn">🧾 프롬프트 복사</button>');
+  parts.push('<button type="button" class="btn ghost" id="redoReading">🎴 다시 뽑기</button>');
+  parts.push('</div>');
+
+  parts.push('<details class="prompt-box" id="promptBox"><summary><span>🧾 AI 프롬프트 미리보기 <span class="opt">(전자책 부록용)</span></span><span class="chev" aria-hidden="true">▾</span></summary>');
+  parts.push('<div class="prompt-inner"><pre id="promptText">' + escHTML(buildPrompt(state).full) + '</pre>');
+  parts.push('<button type="button" class="btn mini" id="copyPrompt2">프롬프트 복사</button></div></details>');
+
+  return parts.join('\n');
+}
+
+/* ---------- AI 해설 → 구조화 ---------- */
+function splitAIText(text){
+  const blocks = String(text).replace(/\r\n/g,'\n').trim().split(/\n\s*\n/);
+  const out = [];
+  blocks.forEach(function(b){
+    const lines = b.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+    if(!lines.length) return;
+    const headMatch = lines[0].match(/^([1-5][).]|[①-⑤]|#{1,3})\s*(.+)$/);
+    if(headMatch && lines.length > 1){
+      out.push({ head: lines[0].replace(/^#{1,3}\s*/, '').replace(/^[1-5][).]\s*/, ''), body: lines.slice(1).join('\n') });
+    } else if(headMatch && lines.length === 1){
+      out.push({ head: lines[0].replace(/^[1-5][).]\s*/, ''), body: '' });
+    } else {
+      out.push({ head: '', body: lines.join('\n') });
+    }
+  });
+  return out;
+}
+
+function buildAIResultHTML(state, reading, aiText, metaNote){
+  const parts = [];
+  parts.push('<div class="reading-head">');
+  parts.push('  <p class="eyebrow">AI Reading · ' + escHTML(reading.dateStr) + '</p>');
+  parts.push('  <h2><span class="name">' + escHTML(state.name) + '</span>님의 ' + escHTML(reading.areaLabel) + '</h2>');
+  parts.push('  <div class="meta-chips">' +
+             '<span>' + escHTML(reading.areaEmoji) + ' ' + escHTML(reading.areaLabel) + '</span>' +
+             '<span>🌙 ' + escHTML(reading.spreadLabel) + '</span>' +
+             '<span>🤖 OpenAI 생성</span>' +
+             '</div>');
+  parts.push('</div>');
+
+  parts.push('<div class="cards-row">');
+  reading.notes.forEach(function(nt, i){
+    parts.push('<div class="card-slot">');
+    parts.push('<span class="pos-label">' + escHTML(nt.pos) + '</span>');
+    parts.push('<div class="tarot-card' + (nt.reversed ? ' rev' : '') + '" style="animation-delay:' + (i * 0.16) + 's">');
+    parts.push('<div class="card-art">');
+    parts.push('<span class="numeral">' + escHTML(nt.numeral) + '</span>');
+    parts.push('<span class="card-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' + ICONS[nt.icon] + '</svg></span>');
+    parts.push('<div class="card-name"><div class="ko">' + escHTML(nt.ko) + '</div><div class="en">' + escHTML(nt.en) + '</div><div class="rule"></div><div class="card-keys">' + nt.keys.split(' · ').map(function(k){ return '<i>' + escHTML(k) + '</i>'; }).join('') + '</div></div>');
+    parts.push('</div></div>');
+    parts.push('<span class="orient' + (nt.reversed ? ' rev' : '') + '">' + (nt.reversed ? '역방향' : '정방향') + '</span>');
+    parts.push('</div>');
+  });
+  parts.push('</div>');
+
+  parts.push('<article class="reading-body">');
+  const blocks = splitAIText(aiText);
+  blocks.forEach(function(b){
+    parts.push('<section class="block">');
+    if(b.head) parts.push('<h3>' + escHTML(b.head) + '</h3>');
+    if(b.body){
+      b.body.split('\n').forEach(function(line){
+        parts.push('<p>' + escHTML(line).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>') + '</p>');
+      });
+    }
+    parts.push('</section>');
+  });
+  if(metaNote) parts.push('<p class="disclaimer">' + escHTML(metaNote) + '</p>');
+  parts.push('<p class="disclaimer">※ 본 리딩은 자기성찰과 오락을 위한 참고 자료이며, 의료·법률·투자 판단을 대신하지 않습니다.</p>');
+  parts.push('</article>');
+
+  parts.push('<div class="actions">');
+  parts.push('<button type="button" class="btn main" id="copyReply">📋 고객 답장 복사</button>');
+  parts.push('<button type="button" class="btn ghost" id="copyPromptBtn">🧾 프롬프트 복사</button>');
+  parts.push('<button type="button" class="btn ghost" id="redoReading">🎴 다시 뽑기</button>');
+  parts.push('</div>');
+
+  parts.push('<details class="prompt-box" id="promptBox"><summary><span>🧾 AI 프롬프트 미리보기 <span class="opt">(전자책 부록용)</span></span><span class="chev" aria-hidden="true">▾</span></summary>');
+  parts.push('<div class="prompt-inner"><pre id="promptText">' + escHTML(buildPrompt(state).full) + '</pre>');
+  parts.push('<button type="button" class="btn mini" id="copyPrompt2">프롬프트 복사</button></div></details>');
+  return parts.join('\n');
+}
+
+/* ---------- 외부에서 쓰는 묶음 ---------- */
+const TarotCore = {
+  CARDS: CARDS, ICONS: ICONS, AREAS: AREAS, SPREADS: SPREADS, TOPICS: TOPICS,
+  drawCards: drawCards, buildReading: buildReading, buildPrompt: buildPrompt,
+  buildResultHTML: buildResultHTML, buildAIResultHTML: buildAIResultHTML,
+  normalizeState: normalizeState, extractTopics: extractTopics, lifePathNumber: lifePathNumber,
+  splitAIText: splitAIText, escHTML: escHTML
+};
+if(typeof window !== 'undefined'){ window.TarotCore = TarotCore; }
+if(typeof globalThis !== 'undefined'){ globalThis.TarotCore = TarotCore; }
+</script>
+<script>
+/* ============================================================
+   SAFE STORAGE — iOS 파일 미리보기(QuickLook / 샌드박스 WebView) 대응
+   localStorage·sessionStorage 가 아예 없거나, 접근하는 순간
+   SecurityError 를 던지는 환경에서도 절대 예외가 나지 않게 감싼다.
+   실제 저장이 막히면 메모리 저장소로 대체해서 화면이 살아 있게 한다.
+   ============================================================ */
+var __MEM_STORAGE = {};
+var __MEM_SESSION = {};
+
+function __storageArea(kind){
+  try{
+    var area;
+    if(kind === 'session'){
+      area = (typeof sessionStorage !== 'undefined') ? sessionStorage : null;
+    }else{
+      area = (typeof localStorage !== 'undefined') ? localStorage : null;
+    }
+    return area || null;
+  }catch(e){
+    return null;   /* 전역 getter 자체가 SecurityError 를 던지는 경우 */
+  }
+}
+
+function __hasKey(map, key){ return Object.prototype.hasOwnProperty.call(map, key); }
+
+function __safeGet(kind, map, key, fallback){
+  var def = (typeof fallback === 'undefined') ? null : fallback;
+  try{
+    var area = __storageArea(kind);
+    if(area){
+      var raw = area.getItem(key);
+      if(raw !== null && raw !== undefined) return String(raw);
+    }
+  }catch(e){ /* SecurityError → 메모리 값으로 */ }
+  return __hasKey(map, key) ? map[key] : def;
+}
+
+function __safeSet(kind, map, key, value){
+  var str = String(value);
+  map[key] = str;
+  try{
+    var area = __storageArea(kind);
+    if(area){ area.setItem(key, str); return true; }
+  }catch(e){ /* 저장 불가 → 메모리에만 */ }
+  return false;
+}
+
+function __safeRemove(kind, map, key){
+  try{ delete map[key]; }catch(e){ map[key] = undefined; }
+  try{
+    var area = __storageArea(kind);
+    if(area) area.removeItem(key);
+  }catch(e){}
+  return true;
+}
+
+function safeGetStorage(key, fallback){ return __safeGet('local', __MEM_STORAGE, key, fallback); }
+function safeSetStorage(key, value){ return __safeSet('local', __MEM_STORAGE, key, value); }
+function safeRemoveStorage(key){ return __safeRemove('local', __MEM_STORAGE, key); }
+function safeGetSession(key, fallback){ return __safeGet('session', __MEM_SESSION, key, fallback); }
+function safeSetSession(key, value){ return __safeSet('session', __MEM_SESSION, key, value); }
+function safeRemoveSession(key){ return __safeRemove('session', __MEM_SESSION, key); }
+
+/* ============================================================
+   런타임 오류 표시 (어디서 났는지 화면에 보여 준다)
+   ============================================================ */
+function errText(err){
+  try{
+    if(!err) return '알 수 없는 오류';
+    if(typeof err === 'string') return err;
+    var name = err.name ? (err.name + ': ') : '';
+    var msg = err.message || String(err);
+    return name + msg;
+  }catch(e){ return '알 수 없는 오류'; }
+}
+
+function reportError(err, where){
+  var msg;
+  try{ msg = (where ? '[' + where + '] ' : '') + errText(err); }catch(e){ msg = '알 수 없는 오류'; }
+  try{
+    if(typeof console !== 'undefined' && console && console.error) console.error(msg);
+  }catch(e){}
+  try{
+    var status = document.getElementById('status');
+    if(status){
+      status.textContent = '문제가 생겼어요: ' + msg;
+      status.className = 'status error';
+    }
+    var banner = document.getElementById('errBanner');
+    if(!banner) return;
+    while(banner.firstChild) banner.removeChild(banner.firstChild);
+
+    var strong = document.createElement('strong');
+    strong.textContent = '화면에서 문제가 발생했어요';
+
+    var detail = document.createElement('pre');
+    var line = msg;
+    if(err && err.stack){ line += '\n' + String(err.stack).split('\n').slice(0, 4).join('\n'); }
+    detail.textContent = line;
+
+    var actions = document.createElement('div');
+    actions.className = 'err-actions';
+
+    var copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'btn ghost small';
+    copyBtn.textContent = '오류 내용 복사';
+    copyBtn.addEventListener('click', function(){
+      try{
+        if(typeof navigator !== 'undefined' && navigator && navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(msg);
+        }
+      }catch(e){}
+    });
+
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'btn ghost small';
+    closeBtn.textContent = '닫기';
+    closeBtn.addEventListener('click', function(){ banner.hidden = true; });
+
+    actions.appendChild(copyBtn);
+    actions.appendChild(closeBtn);
+    banner.appendChild(strong);
+    banner.appendChild(detail);
+    banner.appendChild(actions);
+    banner.hidden = false;
+  }catch(e){ /* 오류를 알리는 중의 오류는 조용히 무시 */ }
+}
+
+function installErrorHooks(){
+  try{
+    window.addEventListener('error', function(ev){
+      var msg = (ev && ev.message) ? ev.message : '스크립트 오류';
+      var loc = (ev && ev.lineno) ? (' (line ' + ev.lineno + (ev.colno ? ':' + ev.colno : '') + ')') : '';
+      reportError(msg + loc, 'run');
+    }, false);
+    window.addEventListener('unhandledrejection', function(ev){
+      reportError((ev && ev.reason) ? ev.reason : '처리되지 않은 비동기 오류', 'promise');
+    }, false);
+  }catch(e){}
+}
+
+/* ============================================================
+   선택자 도우미 (구형 WebView 에서 Element.closest 가 없어도 동작)
+   ============================================================ */
+function matchesSel(node, sel){
+  if(!node || node.nodeType !== 1) return false;
+  try{
+    var fn = node.matches || node.matchesSelector || node.webkitMatchesSelector ||
+             node.msMatchesSelector || node.mozMatchesSelector;
+    if(fn) return fn.call(node, sel);
+  }catch(e){}
+  return false;
+}
+
+function closestIn(node, sel){
+  var n = node;
+  if(n && n.nodeType === 3) n = n.parentNode;   /* 텍스트 노드 보정 */
+  var hops = 0;
+  while(n && n.nodeType === 1 && hops < 40){
+    if(matchesSel(n, sel)) return n;
+    n = n.parentNode;
+    hops++;
+  }
+  return null;
+}
+
+/* ============================================================
+   UI — 화면 연결 (DOM)
+   · 모든 리스너는 DOMContentLoaded 이후에 안전하게 붙인다
+   · 탭은 click 과 touchend 두 경로로 받아 iOS 미리보기에서도 동작
+   · 폼(form) 태그를 쓰지 않으므로 어떤 경우에도 페이지가 새로고침되지 않는다
+   ============================================================ */
+(function(){
+  'use strict';
+
+  var TAP_TARGET = '.chip,.example-btn,#drawBtn,#saveSettings,#clearKey,#jumpSettings,' +
+                   '#copyReply,#copyPromptBtn,#copyPrompt2,#redoReading';
+
+  var LS_KEY = 'aitarot_api_key';
+  var LS_MODEL = 'aitarot_model';
+
+  var el = {};
+  var current = null;   // { state, reading, mode, aiText }
+  var busy = false;
+  var toastTimer = null;
+
+  var lastTouchNode = null;
+  var lastTouchAt = 0;
+  var touchTrack = { x: 0, y: 0, moved: false };
+
+  /* ---------- 예시 사연 ---------- */
+  var EXAMPLES = [
+    {
+      area: 'love', spread: 'ppf', name: '김지수', gender: '여성', birth: '1996-04-18',
+      question: '헤어진 지 3개월 된 전 남자친구와 다시 만날 수 있을까요? 제가 먼저 연락을 해도 될까요? 요즘 연락하면 답은 하는데 짧아서 마음이 자꾸 흔들려요.'
+    },
+    {
+      area: 'work', spread: 'csr', name: '이서연', gender: '여성', birth: '1992-09-02',
+      question: '지금 회사에 5년째 다니고 있는데 더 이상 성장이 없는 것 같아요. 올해 안에 이직을 준비하는 게 맞을까요? 타이밍이 계속 고민됩니다.'
+    },
+    {
+      area: 'money', spread: 'one', name: '박준호', gender: '남성', birth: '1989-01-25',
+      question: '직장을 다니면서 작은 온라인 쇼핑몰을 시작하려고 합니다. 자금은 500만 원 정도 있는데, 지금 시작해도 될까요?'
+    }
+  ];
+
+  /* ---------- DOM 수집 ---------- */
+  function $(id){ return document.getElementById(id); }
+
+  function bindEl(){
+    el = {
+      form: $('readingForm'),          /* 이제 <div role="form"> */
+      name: $('custName'),
+      birth: $('custBirth'),
+      gender: $('custGender'),
+      spread: $('spread'),
+      question: $('question'),
+      areaChips: $('areaChips'),
+      drawBtn: $('drawBtn'),
+      status: $('status'),
+      empty: $('emptyState'),
+      shuffle: $('shuffleStage'),
+      shuffleText: $('shuffleText'),
+      out: $('readingOut'),
+      toast: $('toast'),
+      badge: $('modeBadge'),
+      apiKey: $('apiKey'),
+      model: $('model'),
+      saveKey: $('saveKey'),
+      saveSettings: $('saveSettings'),
+      clearKey: $('clearKey'),
+      settingsPanel: $('settingsPanel'),
+      jumpSettings: $('jumpSettings')
+    };
+  }
+
+  function on(node, type, fn, opts){
+    if(!node || !node.addEventListener) return;
+    try{ node.addEventListener(type, fn, opts || false); }
+    catch(e){ try{ node.addEventListener(type, fn, false); }catch(e2){} }
+  }
+
+  function guard(fn, label){
+    return function(e){
+      try{ return fn.call(this, e); }
+      catch(err){ reportError(err, label || 'event'); }
+    };
+  }
+
+  /* ---------- 공통 ---------- */
+  function setStatus(msg, type){
+    if(!el.status) return;
+    try{
+      el.status.textContent = msg || '';
+      el.status.className = 'status' + (type ? ' ' + type : '');
+    }catch(e){}
+  }
+
+  function toast(msg){
+    if(!el.toast) return;
+    try{
+      el.toast.textContent = msg;
+      el.toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function(){
+        if(el.toast) el.toast.classList.remove('show');
+      }, 2400);
+    }catch(e){}
+  }
+
+  function currentArea(){
+    try{
+      var active = el.areaChips ? el.areaChips.querySelector('.chip.active') : null;
+      return active ? (active.getAttribute('data-area') || 'love') : 'love';
+    }catch(e){ return 'love'; }
+  }
+
+  function setArea(area){
+    if(!el.areaChips || !area) return;
+    var chips = el.areaChips.querySelectorAll('.chip');
+    for(var i = 0; i < chips.length; i++){
+      var node = chips[i];
+      var isOn = node.getAttribute('data-area') === area;
+      try{
+        if(node.classList){ node.classList.toggle('active', isOn); }
+        else {
+          var cls = node.className || '';
+          node.className = isOn ? (cls + ' active') : cls.replace(/\s*\bactive\b/g, '');
+        }
+        node.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+      }catch(e){}
+    }
+  }
+
+  function collectInput(){
+    return {
+      name: el.name ? el.name.value : '',
+      birth: el.birth ? el.birth.value : '',
+      gender: el.gender ? el.gender.value : '',
+      area: currentArea(),
+      spread: (el.spread && el.spread.value) ? el.spread.value : 'ppf',
+      question: el.question ? el.question.value : ''
+    };
+  }
+
+  /* ---------- 설정 ---------- */
+  function updateBadge(){
+    if(!el.badge) return;
+    try{
+      var key = (el.apiKey && el.apiKey.value ? el.apiKey.value : '').trim();
+      if(key){
+        el.badge.textContent = '🤖 GPT 연결 · ' + ((el.model && el.model.value) || 'gpt-4o-mini');
+        el.badge.classList.add('live');
+      }else{
+        el.badge.textContent = '내장 엔진 모드';
+        el.badge.classList.remove('live');
+      }
+    }catch(e){}
+  }
+
+  function loadSettings(){
+    var savedKey = safeGetStorage(LS_KEY, '');
+    var savedModel = safeGetStorage(LS_MODEL, '');
+    try{
+      if(savedKey && el.apiKey){ el.apiKey.value = savedKey; if(el.saveKey) el.saveKey.checked = true; }
+      if(savedModel && el.model){ el.model.value = savedModel; }
+    }catch(e){}
+    updateBadge();
+  }
+
+  function saveSettings(){
+    var key = (el.apiKey && el.apiKey.value ? el.apiKey.value : '').trim();
+    var model = (el.model && el.model.value) || 'gpt-4o-mini';
+    var persisted = true;
+    try{
+      if(el.saveKey && el.saveKey.checked && key){
+        var ok1 = safeSetStorage(LS_KEY, key);
+        var ok2 = safeSetStorage(LS_MODEL, model);
+        persisted = !!(ok1 && ok2);
+        toast(persisted
+          ? '키를 이 브라우저에 저장했어요'
+          : '이 미리보기에서는 저장이 막혀 있어요. 이 화면에서만 유지됩니다');
+      }else{
+        safeRemoveStorage(LS_KEY);
+        safeRemoveStorage(LS_MODEL);
+        toast(key ? '키는 이번 세션에만 사용합니다' : '저장된 키를 비웠어요');
+      }
+    }catch(e){
+      toast('이 브라우저에서는 키 저장이 제한돼요');
+    }
+    updateBadge();
+    if(key) setStatus('GPT 모드로 해설을 생성합니다. (' + model + ')', 'ok');
+    else setStatus('내장 엔진 모드로 해설을 생성합니다.', '');
+  }
+
+  function clearKey(){
+    try{
+      if(el.apiKey) el.apiKey.value = '';
+      if(el.saveKey) el.saveKey.checked = false;
+    }catch(e){}
+    safeRemoveStorage(LS_KEY);
+    safeRemoveStorage(LS_MODEL);
+    updateBadge();
+    setStatus('키를 지웠어요. 내장 엔진으로 동작합니다.', '');
+    toast('키를 삭제했어요');
+  }
+
+  /* ---------- OpenAI 호출 ---------- */
+  function callOpenAI(key, model, prompt){
+    if(typeof fetch !== 'function'){
+      return Promise.reject(new Error('이 미리보기에서는 네트워크 호출(fetch)을 지원하지 않아요'));
+    }
+    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = controller ? setTimeout(function(){ try{ controller.abort(); }catch(e){} }, 45000) : null;
+
+    return fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + key
+      },
+      body: JSON.stringify({
+        model: model || 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: prompt.system },
+          { role: 'user', content: prompt.user }
+        ],
+        temperature: 0.9,
+        max_tokens: 1400
+      }),
+      signal: controller ? controller.signal : undefined
+    }).then(function(res){
+      if(!res.ok){
+        return res.json().catch(function(){ return {}; }).then(function(body){
+          var reason = (body && body.error && body.error.message) || ('HTTP ' + res.status);
+          if(res.status === 401) reason = 'API 키가 올바르지 않은 것 같아요';
+          else if(res.status === 429) reason = '호출 한도 또는 결제 상태를 확인해 주세요';
+          throw new Error(reason);
+        });
+      }
+      return res.json();
+    }).then(function(data){
+      if(timer) clearTimeout(timer);
+      var content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+      if(!content) throw new Error('응답이 비어 있어요');
+      return String(content).trim();
+    }).catch(function(err){
+      if(timer) clearTimeout(timer);
+      throw err;
+    });
+  }
+
+  function aiReplyText(state, reading, aiText){
+    var lines = [];
+    lines.push('🔮 ' + state.name + '님의 ' + reading.areaLabel + ' 타로 리딩');
+    lines.push('');
+    lines.push('안녕하세요, ' + state.name + '님. 보내주신 사연으로 카드를 펼쳐봤어요.');
+    lines.push('');
+    lines.push('🃏 뽑힌 카드');
+    reading.notes.forEach(function(nt, i){
+      lines.push((i + 1) + '. ' + nt.pos + ' — ' + nt.ko + ' (' + nt.orient + ') · ' + nt.keys);
+    });
+    lines.push('');
+    lines.push(String(aiText).replace(/\*\*/g, '').replace(/^#{1,3}\s*/gm, '').trim());
+    lines.push('');
+    lines.push('※ 본 리딩은 참고용이며, 의료·법률·투자 판단을 대신하지 않습니다.');
+    return lines.join('\n');
+  }
+
+  /* ---------- 복사 ---------- */
+  function fallbackCopy(text){
+    try{
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-1000px';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      if(ta.setSelectionRange) ta.setSelectionRange(0, text.length);
+      var ok = false;
+      try{ ok = document.execCommand('copy'); }catch(e){ ok = false; }
+      document.body.removeChild(ta);
+      return !!ok;
+    }catch(e){ return false; }
+  }
+
+  /* iOS 사파리 등에서 클립보드가 막힐 때 전문을 띄워 직접 복사하게 함 */
+  function showCopySheet(text, label){
+    try{
+      var old = document.getElementById('copySheet');
+      if(old && old.parentNode) old.parentNode.removeChild(old);
+
+      var wrap = document.createElement('div');
+      wrap.id = 'copySheet';
+      wrap.style.cssText = 'position:fixed;inset:0;z-index:60;background:rgba(6,5,14,.82);display:flex;align-items:flex-end;justify-content:center;padding:16px';
+
+      var box = document.createElement('div');
+      box.style.cssText = 'width:100%;max-width:560px;background:#15112c;border:1px solid rgba(217,184,113,.35);border-radius:16px;padding:16px;max-height:82vh;display:flex;flex-direction:column;gap:10px;box-shadow:0 20px 50px rgba(0,0,0,.6)';
+
+      var title = document.createElement('p');
+      title.textContent = label + ' 전문이에요. 길게 눌러 복사해 주세요.';
+      title.style.cssText = 'margin:0;font-size:13px;color:#f2ddaa;font-family:var(--sans)';
+
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.readOnly = true;
+      ta.style.cssText = 'width:100%;min-height:200px;flex:1;background:#0b0820;color:#eae6f5;border:1px solid rgba(217,184,113,.25);border-radius:10px;padding:10px;font-size:12px;line-height:1.65;resize:vertical';
+
+      var close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'btn ghost small';
+      close.textContent = '닫기';
+      close.style.cssText = 'align-self:flex-end';
+      close.addEventListener('click', function(){ if(wrap.parentNode) wrap.parentNode.removeChild(wrap); });
+      wrap.addEventListener('click', function(e){ if(e.target === wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap); });
+
+      box.appendChild(title); box.appendChild(ta); box.appendChild(close);
+      wrap.appendChild(box);
+      document.body.appendChild(wrap);
+      setTimeout(function(){ try{ ta.focus(); if(ta.select) ta.select(); }catch(e){} }, 60);
+    }catch(e){
+      reportError(e, 'copy');
+    }
+  }
+
+  function copyText(text, label){
+    if(!text){ toast('복사할 내용이 없어요'); return; }
+    function failed(){
+      toast('복사가 막혀서 전문을 열었어요. 길게 눌러 복사해 주세요');
+      showCopySheet(text, label);
+    }
+    try{
+      if(typeof navigator !== 'undefined' && navigator && navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(function(){
+          toast(label + ' 복사 완료 ✓');
+        }).catch(function(){
+          if(!fallbackCopy(text)) failed(); else toast(label + ' 복사 완료 ✓');
+        });
+        return;
+      }
+    }catch(e){}
+    if(!fallbackCopy(text)) failed(); else toast(label + ' 복사 완료 ✓');
+  }
+
+  /* ---------- 렌더 ---------- */
+  function showShuffle(){
+    try{
+      if(el.empty) el.empty.hidden = true;
+      if(el.out) el.out.hidden = true;
+      if(el.shuffle) el.shuffle.hidden = false;
+    }catch(e){}
+  }
+
+  function showResult(html){
+    try{
+      if(el.empty) el.empty.hidden = true;
+      if(el.shuffle) el.shuffle.hidden = true;
+      if(el.out){
+        el.out.innerHTML = html;
+        el.out.hidden = false;
+      }
+      if(window.innerWidth < 980 && el.out && el.out.scrollIntoView){
+        setTimeout(function(){
+          try{ el.out.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+          catch(e){ try{ el.out.scrollIntoView(); }catch(_){} }
+        }, 80);
+      }
+    }catch(e){ reportError(e, 'render'); }
+  }
+
+  /* ---------- 결과 버튼 ---------- */
+  function copyReply(){
+    if(!current) return;
+    var text = current.mode === 'ai'
+      ? aiReplyText(current.state, current.reading, current.aiText)
+      : current.reading.replyText;
+    copyText(text, '고객 답장');
+  }
+
+  function copyPrompt(){
+    if(typeof TarotCore === 'undefined' || !current) return;
+    copyText(TarotCore.buildPrompt(current.state).full, '프롬프트');
+  }
+
+  /* ---------- 메인 플로우 ---------- */
+  function runReading(isRedo){
+    if(busy) return;
+
+    if(typeof TarotCore === 'undefined' || !TarotCore.normalizeState){
+      reportError('타로 엔진을 불러오지 못했어요. 파일이 온전한지 확인해 주세요.', 'engine');
+      return;
+    }
+
+    var input = collectInput();
+
+    if(!input.name || !input.name.trim()){
+      setStatus('고객 이름을 먼저 입력해 주세요.', 'error');
+      try{
+        if(el.name){
+          el.name.focus();
+          el.name.style.borderColor = 'rgba(240,120,120,.65)';
+          setTimeout(function(){ if(el.name) el.name.style.borderColor = ''; }, 1600);
+        }
+      }catch(e){}
+      return;
+    }
+
+    var state = TarotCore.normalizeState({
+      name: input.name,
+      birth: input.birth,
+      gender: input.gender,
+      area: input.area,
+      spread: input.spread,
+      question: input.question,
+      cards: []
+    });
+
+    busy = true;
+    try{ if(el.drawBtn) el.drawBtn.disabled = true; }catch(e){}
+    setStatus(isRedo ? '카드를 다시 섞는 중…' : '카드를 섞고 있어요…', '');
+    if(isRedo){
+      try{ if(el.out) el.out.hidden = true; if(el.shuffle) el.shuffle.hidden = false; }catch(e){}
+    }else{
+      showShuffle();
+    }
+    try{
+      if(el.shuffleText) el.shuffleText.textContent = isRedo ? '카드를 다시 섞고 있어요…' : '카드를 섞고 있어요…';
+    }catch(e){}
+
+    setTimeout(function(){
+      try{
+        var cards = TarotCore.drawCards(state.spread);
+        state.cards = cards;
+        var reading = TarotCore.buildReading(state);
+
+        var key = (el.apiKey && el.apiKey.value ? el.apiKey.value : '').trim();
+        var model = (el.model && el.model.value) || 'gpt-4o-mini';
+
+        if(!key){
+          current = { state: state, reading: reading, mode: 'local', aiText: '' };
+          showResult(TarotCore.buildResultHTML(state, reading));
+          finish('내장 엔진으로 해설을 완성했어요. 답장을 복사해 고객에게 보내 보세요.', 'ok');
+          return;
+        }
+
+        setStatus('GPT가 해설을 쓰고 있어요… (보통 5~15초)', '');
+        var prompt = TarotCore.buildPrompt(state);
+        callOpenAI(key, model, prompt).then(function(aiText){
+          current = { state: state, reading: reading, mode: 'ai', aiText: aiText };
+          showResult(TarotCore.buildAIResultHTML(state, reading, aiText, ''));
+          finish('GPT 해설을 완성했어요. 마음에 안 드는 문장은 자유롭게 다듬어 보세요.', 'ok');
+        }).catch(function(err){
+          current = { state: state, reading: reading, mode: 'local', aiText: '' };
+          showResult(TarotCore.buildResultHTML(state, reading));
+          var reason = (err && err.name === 'AbortError') ? '응답 시간이 초과됐어요' : ((err && err.message) || '알 수 없는 오류');
+          finish('AI 호출에 실패해 내장 엔진으로 대신 해설했어요. (' + reason + ')', 'error');
+        });
+      }catch(err){
+        busy = false;
+        try{ if(el.drawBtn) el.drawBtn.disabled = false; }catch(e){}
+        reportError(err, 'reading');
+      }
+    }, isRedo ? 900 : 1250);
+  }
+
+  function finish(msg, type){
+    busy = false;
+    try{ if(el.drawBtn) el.drawBtn.disabled = false; }catch(e){}
+    setStatus(msg, type);
+    try{ if(el.shuffle) el.shuffle.hidden = true; }catch(e){}
+  }
+
+  /* ---------- 탭 라우팅 ---------- */
+  function fillExample(idx){
+    var ex = EXAMPLES[idx];
+    if(!ex) return;
+    try{
+      if(el.name) el.name.value = ex.name;
+      if(el.birth) el.birth.value = ex.birth;
+      if(el.gender) el.gender.value = ex.gender;
+      if(el.spread) el.spread.value = ex.spread;
+      if(el.question) el.question.value = ex.question;
+    }catch(e){ reportError(e, 'example'); }
+    setArea(ex.area);
+    setStatus('예시 사연을 채웠어요. 바로 카드를 뽑아볼 수 있어요.', '');
+    try{
+      if(window.innerWidth < 980 && el.question && el.question.focus) el.question.focus();
+    }catch(e){}
+  }
+
+  function jumpToSettings(){
+    try{
+      if(el.settingsPanel) el.settingsPanel.open = true;
+      if(el.settingsPanel && el.settingsPanel.scrollIntoView){
+        try{ el.settingsPanel.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        catch(e){ try{ el.settingsPanel.scrollIntoView(); }catch(_){} }
+      }
+      setTimeout(function(){ try{ if(el.apiKey && el.apiKey.focus) el.apiKey.focus(); }catch(e){} }, 320);
+    }catch(e){ reportError(e, 'settings'); }
+  }
+
+  function routeTap(node){
+    if(!node) return;
+    var id = node.id || '';
+    if(matchesSel(node, '.chip')){
+      setArea(node.getAttribute('data-area'));
+      return;
+    }
+    if(matchesSel(node, '.example-btn')){
+      fillExample(parseInt(node.getAttribute('data-example'), 10) || 0);
+      return;
+    }
+    if(id === 'drawBtn'){
+      if(el.drawBtn && el.drawBtn.disabled) return;
+      runReading(false);
+      return;
+    }
+    if(id === 'saveSettings'){ saveSettings(); return; }
+    if(id === 'clearKey'){ clearKey(); return; }
+    if(id === 'jumpSettings'){ jumpToSettings(); return; }
+    if(id === 'copyReply'){ copyReply(); return; }
+    if(id === 'copyPromptBtn' || id === 'copyPrompt2'){ copyPrompt(); return; }
+    if(id === 'redoReading'){ runReading(true); return; }
+  }
+
+  function handleTap(e){
+    var node = closestIn(e && e.target, TAP_TARGET);
+    if(!node) return;
+
+    var now = Date.now();
+
+    if(e.type === 'touchend'){
+      if(touchTrack.moved) return;                     /* 스크롤이었으면 무시 */
+      lastTouchNode = node;
+      lastTouchAt = now;
+      try{ if(e.cancelable !== false) e.preventDefault(); }catch(err){}  /* 중복 click 차단 */
+      routeTap(node);
+      return;
+    }
+
+    /* click : touchend 직후 따라오는 중복 click 은 건너뛴다 (연속 클릭은 막지 않음) */
+    if(lastTouchNode === node && (now - lastTouchAt) < 500) return;
+    routeTap(node);
+  }
+
+  function bindTaps(){
+    on(document, 'touchstart', function(e){
+      var t = e && e.touches && e.touches[0];
+      touchTrack.moved = false;
+      if(t){ touchTrack.x = t.clientX; touchTrack.y = t.clientY; }
+    }, { passive: true });
+
+    on(document, 'touchmove', function(e){
+      var t = e && e.touches && e.touches[0];
+      if(!t) return;
+      if(Math.abs(t.clientX - touchTrack.x) > 12 || Math.abs(t.clientY - touchTrack.y) > 12){
+        touchTrack.moved = true;
+      }
+    }, { passive: true });
+
+    on(document, 'touchend', guard(handleTap, 'tap'), { passive: false });
+    on(document, 'click', guard(handleTap, 'tap'), false);
+  }
+
+  /* ---------- 기타 ---------- */
+  function bindEnter(){
+    if(!el.name) return;
+    on(el.name, 'keydown', guard(function(e){
+      var key = e.key || '';
+      if(key === 'Enter' || e.keyCode === 13){
+        try{ e.preventDefault(); }catch(_){}
+        runReading(false);
+      }
+    }, 'enter'));
+  }
+
+  function clampBirth(){
+    try{
+      if(!el.birth) return;
+      var t = new Date();
+      var max = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+      el.birth.setAttribute('max', max);
+      el.birth.setAttribute('min', '1930-01-01');
+    }catch(e){}
+  }
+
+  function initApp(){
+    bindEl();
+    if(!el.name || !el.question || !el.drawBtn || !el.areaChips || !el.out){
+      throw new Error('필수 입력 요소를 찾지 못했어요 (파일이 잘렸을 수 있습니다)');
+    }
+
+    /* 만약을 대비해 문서 전체의 submit 을 막아 둔다 (페이지 새로고침 방지) */
+    on(document, 'submit', function(e){
+      try{ e.preventDefault(); }catch(_){}
+      return false;
+    }, true);
+
+    bindTaps();
+    bindEnter();
+
+    /* 설정 입력칸 반응 */
+    on(el.apiKey, 'input', guard(updateBadge, 'badge'));
+    on(el.model, 'change', guard(function(){
+      if(el.saveKey && el.saveKey.checked) saveSettings();
+      else updateBadge();
+    }, 'model'));
+
+    clampBirth();
+    loadSettings();
+    setStatus('이름과 사연을 적고 카드를 뽑아 보세요. API 키가 없어도 바로 작동합니다.', '');
+
+    /* 웹폰트가 늦게 와도 레이아웃이 흔들리지 않게: 없는 브라우저에서도 안전하게 */
+    try{
+      if(document.fonts && document.fonts.ready && typeof document.fonts.ready.then === 'function'){
+        document.fonts.ready.then(function(){
+          try{ document.documentElement.classList.add('fonts-ready'); }catch(e){}
+        }).catch(function(){});
+      }else{
+        try{ document.documentElement.classList.add('fonts-ready'); }catch(e){}
+      }
+    }catch(e){}
+  }
+
+  function boot(){
+    try{ initApp(); }
+    catch(err){ reportError(err, 'init'); }
+  }
+
+  installErrorHooks();
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', boot, false);
+  }else{
+    boot();
+  }
+})();
+</script>
+</body>
+</html>
