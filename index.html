@@ -1987,8 +1987,8 @@ function buildFollowUp(state, reading, opts){
   const k1 = keys[0] || '지금의 흐름';
   const k2 = keys[1] || k1;
   const good = !focus.reversed;
-  const whenOpen = pickBy(rng, ['2~4주 안', '이번 달 안', '3주쯤 뒤', '다음 달 초']);
-  const whenHold = pickBy(rng, ['4~6주 뒤', '다음 달 중순 이후', '두 달쯤 지난 뒤']);
+  const whenOpen = pickBy(rng, ['2~4주 후', '3주 후', '이번 달 말', '다음 달 초']);
+  const whenHold = pickBy(rng, ['4~6주 후', '다음 달 중순', '두 달 뒤']);
   /* 카드 이름·키워드에 조사를 정확히 붙인다 ("매달린 사람가" 같은 오류 방지) */
   function K(kind){ return josa('\'' + k1 + '\'', kind); }
   function F(kind){ return josa(fName, kind); }
@@ -2014,7 +2014,7 @@ function buildFollowUp(state, reading, opts){
       break;
     case 'decision':
       verdict = good
-        ? '결정은 움직이는 쪽으로 기울어 있어요. ' + whenOpen + ' 안에 기준 하나를 정해 정리하면 됩니다.'
+        ? '결정은 움직이는 쪽으로 기울어 있어요. ' + whenOpen + '까지 기준 하나를 정해 정리하면 됩니다.'
         : '결정은 아직 이릅니다. ' + whenHold + '까지 조건을 확인하고, 그 뒤에 한 번에 정리하세요.';
       break;
     case 'chance':
@@ -2037,7 +2037,7 @@ function buildFollowUp(state, reading, opts){
   const explain = [];
   const frag = followFragment(state.question, 26);
 
-  explain.push((bonus ? '추가로 뽑은 ' : '') + '\'' + fName + '\'가 ' + orient + '으로 이 질문의 중심에 섰어요. ' +
+  explain.push((bonus ? '추가로 뽑은 ' : '') + josa('\'' + fName + '\'', 'i') + ' ' + orient + '으로 이 질문의 중심에 섰어요. ' +
                (bonus ? '이 카드는 이번 질문에 대한 조언을 담당합니다. ' : face.body + ' ') +
                lensOf(focus));
 
@@ -2059,7 +2059,7 @@ function buildFollowUp(state, reading, opts){
 
   switch(type){
     case 'timing':
-      explain.push(k1 + ' 기운이 살아 있는 동안에는 한 번만 움직이는 게 좋아요. ' + whenOpen +
+      explain.push('이 카드의 ' + K('i') + ' 살아 있는 동안에는 한 번만 움직이는 게 좋아요. ' + whenOpen +
                    '까지는 확인과 준비에 쓰고, 그 안에서 연락·지원·만남 중 하나를 딱 한 번 실행하세요. 같은 일을 두세 번 반복하면 이 카드가 말한 흐름이 흐트러집니다.');
       break;
     case 'mind':
@@ -2098,7 +2098,7 @@ function buildFollowUp(state, reading, opts){
   const tips = [];
   switch(type){
     case 'timing':
-      tips.push('달력에 움직일 날을 하나 정해 표시하고, 그날까지 준비는 하나씩만 끝내세요. ' + whenOpen + ' 안이면 충분합니다.');
+      tips.push('달력에 움직일 날을 하나 정해 표시하고, 그날까지 준비는 하나씩만 끝내세요. 준비 기간은 짧게 잡아도 됩니다.');
       tips.push('그 기간 안에 연락·지원·만남은 \'한 번\'만 실행하세요. 두 번째는 결과를 본 뒤에 정합니다.');
       break;
     case 'mind':
