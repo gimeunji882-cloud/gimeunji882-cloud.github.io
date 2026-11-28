@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<!-- v3 · 2026-11-27 · Gemini 무료 연동 + 타로 해설 프롬프트 고도화
+<!-- v4 · 2026-11-28 · 추가 질문 이어 답변 (기존 카드 흐름 / 조언 카드 1장 더 뽑기)
+     · 첫 리딩 아래에 「💬 추가 질문 이어 답변하기」 패널 — 질문 여러 번 이어서, 답변마다 복사 버튼
+     · v3 그대로 유지: Gemini 무료 연동 + 타로 해설 프롬프트 고도화
      · AI 제공자 선택(Google Gemini 무료 / OpenAI GPT 유료) + 제공자별 키·모델 저장
      · Gemini generateContent 호출 — 2.5-flash 실패 시 2.0-flash 로 1회 자동 폴백, 그래도 실패하면 내장 엔진
      · 해설 프롬프트 전면 개편 — 두괄식 결론, 사연 밀착, 위치별 차별화, 실전 지침(피할 것 1 · 할 것 2)
@@ -472,6 +474,109 @@
     .block p,.card-note p,.advice-list li{font-size:12.5px}
     .actions .btn{flex:1 1 100%}
   }
+  /* ---------- 추가 질문 이어 답변 (v4) ---------- */
+  .followup{
+    margin-top:26px;padding:20px 18px 18px;border-radius:16px;
+    border:1px solid rgba(217,184,113,.2);
+    background:linear-gradient(155deg,rgba(28,22,58,.62),rgba(10,8,24,.55));
+  }
+  .followup-head h3{
+    margin:0 0 6px;font-family:var(--serif);font-size:15.5px;font-weight:600;
+    color:var(--gold-2);letter-spacing:.02em;
+  }
+  .followup-head p{margin:0 0 16px;font-size:11.5px;color:var(--muted);line-height:1.75}
+  .fq-list{display:grid;gap:14px;margin:0 0 16px}
+  .fq-list:empty{display:none;margin:0}
+  .fq-item{
+    border:1px solid rgba(217,184,113,.16);border-radius:14px;
+    background:rgba(8,6,20,.5);padding:14px;
+  }
+  .fq-q{display:flex;gap:9px;align-items:flex-start;margin-bottom:11px}
+  .fq-badge{
+    flex:none;margin-top:2px;font-size:9.5px;letter-spacing:.1em;color:var(--gold);
+    border:1px solid rgba(217,184,113,.32);border-radius:6px;padding:2px 7px;line-height:1.5;
+  }
+  .fq-q p{margin:0;font-size:13px;color:#f4ecd9;line-height:1.75}
+  .fq-mode{margin:0 0 11px;font-size:10.5px;color:var(--muted);letter-spacing:.01em}
+  .fq-label{
+    display:block;font-size:9.5px;letter-spacing:.16em;color:var(--gold);
+    text-transform:uppercase;margin-bottom:5px;
+  }
+  .fq-verdict{
+    padding:12px 14px;border-radius:11px;margin-bottom:13px;
+    background:linear-gradient(140deg,rgba(217,184,113,.15),rgba(123,92,214,.12));
+    border:1px solid rgba(217,184,113,.22);
+  }
+  .fq-verdict .fq-label{margin-bottom:4px}
+  .fq-verdict p{margin:0;font-family:var(--serif);font-size:13.5px;line-height:1.85;color:#fbf2dc}
+  .fq-explain{margin-bottom:13px}
+  .fq-explain p{margin:0 0 8px;font-size:12.8px;line-height:1.9;color:#ded9ee}
+  .fq-explain p:last-child{margin-bottom:0}
+  .fq-tips{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+  .fq-tips li{
+    display:flex;gap:9px;font-size:12.5px;line-height:1.8;color:#ded9ee;
+    background:rgba(217,184,113,.05);border:1px solid rgba(217,184,113,.12);
+    border-radius:9px;padding:9px 12px;
+  }
+  .fq-tips li .no{color:var(--gold);font-family:var(--serif);font-size:11px;flex:none;padding-top:3px}
+  .fq-foot{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:13px;padding-top:11px;
+    border-top:1px solid rgba(217,184,113,.12);
+  }
+  .fq-hint{font-size:10px;color:#7d7599}
+  .bonus-wrap{
+    display:flex;gap:13px;align-items:center;margin:0 0 13px;padding:11px 12px;
+    border:1px solid rgba(217,184,113,.22);border-radius:12px;background:rgba(217,184,113,.05);
+  }
+  .bonus-mini{
+    width:58px;flex:none;aspect-ratio:5 / 8;border-radius:8px;padding:4px;overflow:hidden;
+    background:linear-gradient(160deg,#251d51,#0f0b25 72%);
+    box-shadow:inset 0 0 0 1px rgba(217,184,113,.5), 0 8px 18px rgba(0,0,0,.45);
+  }
+  .bonus-mini.rev{box-shadow:inset 0 0 0 1px rgba(168,128,226,.6), 0 8px 18px rgba(0,0,0,.45)}
+  .bonus-mini .card-art{padding:3px 2px}
+  .bonus-mini .numeral{font-size:7.5px}
+  .bonus-mini .card-icon svg{width:22px;height:22px}
+  .bonus-mini .card-name .ko{font-size:8.5px;line-height:1.25}
+  .bonus-mini.rev .card-art{transform:rotate(180deg)}
+  .bonus-meta{min-width:0}
+  .bonus-meta .fq-label{margin-bottom:3px}
+  .bonus-title{margin:0;font-family:var(--serif);font-size:13.5px;color:#fff4da;font-weight:600}
+  .bonus-title em{font-style:normal;font-size:10.5px;color:var(--muted);font-family:var(--sans);font-weight:400}
+  .bonus-keys{margin:2px 0 5px;font-size:10.5px;color:var(--gold);letter-spacing:.02em}
+  .bonus-body{margin:0;font-size:11.5px;line-height:1.7;color:#cfc9e0}
+  .fq-chips{display:flex;flex-wrap:wrap;gap:7px;margin:-4px 0 14px}
+  .fq-chip{
+    font-family:var(--sans);font-size:11px;color:var(--gold-2);text-align:left;
+    background:transparent;border:1px dashed rgba(217,184,113,.3);
+    border-radius:999px;padding:5px 11px;cursor:pointer;transition:all .16s;
+    -webkit-appearance:none;appearance:none;touch-action:manipulation;
+    -webkit-tap-highlight-color:rgba(217,184,113,.18);
+  }
+  .fq-chip:hover{background:rgba(217,184,113,.1);border-style:solid}
+  .fmode-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:13px}
+  .fmode{
+    display:flex;flex-direction:column;gap:2px;text-align:left;
+    padding:10px 12px;border-radius:12px;cursor:pointer;
+    border:1px solid rgba(217,184,113,.2);background:rgba(255,255,255,.02);
+    transition:all .16s;-webkit-appearance:none;appearance:none;
+    touch-action:manipulation;-webkit-tap-highlight-color:rgba(217,184,113,.18);
+  }
+  .fmode b{font-family:var(--sans);font-size:12px;font-weight:500;color:var(--text);line-height:1.4}
+  .fmode small{font-size:10.5px;color:var(--muted);line-height:1.4}
+  .fmode.active{
+    border-color:rgba(217,184,113,.6);
+    background:linear-gradient(140deg,rgba(217,184,113,.2),rgba(123,92,214,.18));
+    box-shadow:0 0 20px rgba(217,184,113,.1);
+  }
+  .fmode.active b{color:#fff6e2}
+  @media (max-width:560px){
+    .followup{padding:16px 13px 14px}
+    .fq-item{padding:12px}
+    .fmode-row{grid-template-columns:1fr}
+    .fq-explain p,.fq-tips li{font-size:12px}
+    .bonus-mini{width:52px}
+  }
   /* ---------- iOS 탭/터치 안정화 ---------- */
   button,.chip,.example-btn,.btn,.settings summary{
     -webkit-appearance:none;appearance:none;
@@ -690,7 +795,7 @@
 </main>
 
 <footer class="foot">
-  AI 타로 리딩 · 타로 부업 상담 자동화 &nbsp;|&nbsp; v3 (2026-11-27 · Gemini 무료 연동 · 해설 프롬프트 고도화) &nbsp;|&nbsp; 이 리딩은 자기성찰과 오락을 위한 참고 자료이며, 의료·법률·투자 판단을 대신하지 않습니다.
+  AI 타로 리딩 · 타로 부업 상담 자동화 &nbsp;|&nbsp; v4 (2026-11-28 · 추가 질문 이어 답변 · 조언 카드 1장 더 뽑기) &nbsp;|&nbsp; 이 리딩은 자기성찰과 오락을 위한 참고 자료이며, 의료·법률·투자 판단을 대신하지 않습니다.
 </footer>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -1719,6 +1824,8 @@ function buildResultHTML(state, reading){
   parts.push('<div class="prompt-inner"><pre id="promptText">' + escHTML(buildPrompt(state).full) + '</pre>');
   parts.push('<button type="button" class="btn mini" id="copyPrompt2">프롬프트 복사</button></div></details>');
 
+  parts.push(followPanelHTML());
+
   return parts.join('\n');
 }
 
@@ -1794,6 +1901,522 @@ function buildAIResultHTML(state, reading, aiText, metaNote, aiLabel){
   parts.push('<details class="prompt-box" id="promptBox"><summary><span>🧾 AI 프롬프트 미리보기 <span class="opt">(전자책 부록용)</span></span><span class="chev" aria-hidden="true">▾</span></summary>');
   parts.push('<div class="prompt-inner"><pre id="promptText">' + escHTML(buildPrompt(state).full) + '</pre>');
   parts.push('<button type="button" class="btn mini" id="copyPrompt2">프롬프트 복사</button></div></details>');
+  parts.push(followPanelHTML());
+
+  return parts.join('\n');
+}
+
+/* ============================================================
+   v4 — 추가 질문 이어 답변 (내장 엔진 · AI 프롬프트 · 결과 HTML)
+   ============================================================ */
+const FOLLOW_EXAMPLES = [
+  '언제쯤 연락해 보면 좋을까요?',
+  '상대방 속마음이 더 궁금해요',
+  '이직 결정 타이밍은 언제가 좋을까요?'
+];
+
+const FOLLOW_TYPES = [
+  { key:'timing',   re:/(언제|몇\s*월|몇\s*주|시기|타이밍|때가|날짜|며칠|이번\s*달|다음\s*달|올해|연말|연초|얼마나\s*걸)/ },
+  { key:'mind',     re:/(속\s*마음|속마음|마음이|어떻게\s*생각|생각이|좋아하|감정|신경\s*쓰|나를|저를|관심)/ },
+  { key:'contact',  re:/(연락|카톡|문자|답장|디엠|먼저\s*보|전화|읽씹|읽고|보내도)/ },
+  { key:'decision', re:/(이직|이사|결정|선택|고를|포기|시작|그만|관두|할까요|할지|해야\s*하|맞을까)/ },
+  { key:'chance',   re:/(가능성|될까|될\s*수|성공|이뤄|가능할|희망|기대)/ },
+  { key:'how',      re:/(어떻게|방법|어떤\s*게|무엇을|뭘|준비|조언|해야\s*될)/ }
+];
+
+/* 질문 유형 — 없으면 general */
+function classifyFollow(q){
+  const s = String(q == null ? '' : q);
+  for(let i = 0; i < FOLLOW_TYPES.length; i++){
+    if(FOLLOW_TYPES[i].re.test(s)) return FOLLOW_TYPES[i].key;
+  }
+  return 'general';
+}
+
+/* 사연에서 그대로 인용할 짧은 조각 */
+function followFragment(text, max){
+  const s = String(text == null ? '' : text).replace(/\s+/g, ' ').trim();
+  if(!s) return '';
+  const limit = max || 24;
+  if(s.length <= limit) return s;
+  const cut = s.slice(0, limit);
+  const sp = cut.lastIndexOf(' ');
+  return (sp > 10 ? cut.slice(0, sp) : cut).replace(/[,.。、!?！？]$/, '') + '…';
+}
+
+/* ---------- 내장 엔진: 추가 질문 답변 ---------- */
+function buildFollowUp(state, reading, opts){
+  const o = opts || {};
+  const question = String(o.question == null ? '' : o.question).trim();
+  const name = state.name || '고객';
+  const cards = state.cards || [];
+  const n = cards.length;
+  const bonus = o.bonus || null;
+  const history = o.history || [];
+  const type = classifyFollow(question);
+
+  const rng = makeRng(hashStr(name + '|' + question + '|' +
+    (bonus ? bonus.card.id + (bonus.reversed ? 'R' : 'U') : 'same') + '|' + history.length));
+
+  function at(i){ return cards[Math.max(0, Math.min(cards.length - 1, i))]; }
+  function faceOf(c){ return c.card[c.reversed ? 'rev' : 'up']; }
+  function lensOf(c){ const f = faceOf(c); return f[state.area] || f.body; }
+
+  let focus;
+  if(bonus) focus = bonus;
+  else if(n <= 1) focus = cards[0] || null;
+  else if(type === 'timing' || type === 'chance' || type === 'how') focus = at(n - 1);
+  else if(type === 'mind' || type === 'contact') focus = at(1);
+  else if(type === 'decision') focus = at(state.spread === 'csr' ? 1 : 1);
+  else focus = at(1);
+
+  if(!focus){
+    const only = '[결론 한 줄] 카드가 아직 없어 이어서 답하기 어려워요. 먼저 카드를 뽑아 주세요.';
+    return {
+      question: question, mode: 'same', bonus: null,
+      verdict: '먼저 카드를 뽑아 주세요.', explain: [],
+      tips: ['위쪽에서 이름과 사연을 적고 카드를 뽑으면 이어서 답할 수 있어요.'],
+      builtin: true, aiLabel: '', replyText: only
+    };
+  }
+
+  const face = faceOf(focus);
+  const keys = face.keys || [];
+  const fName = focus.card.ko;
+  const orient = focus.reversed ? '역방향' : '정방향';
+  const k1 = keys[0] || '지금의 흐름';
+  const k2 = keys[1] || k1;
+  const good = !focus.reversed;
+  const whenOpen = pickBy(rng, ['2~4주 안', '이번 달 안', '3주쯤 뒤', '다음 달 초']);
+  const whenHold = pickBy(rng, ['4~6주 뒤', '다음 달 중순 이후', '두 달쯤 지난 뒤']);
+  /* 카드 이름·키워드에 조사를 정확히 붙인다 ("매달린 사람가" 같은 오류 방지) */
+  function K(kind){ return josa('\'' + k1 + '\'', kind); }
+  function F(kind){ return josa(fName, kind); }
+  function copula(w){ return String(w) + (hasBatchim(w) ? '이에요' : '예요'); }
+
+  /* --- 결론 한 줄 --- */
+  let verdict;
+  switch(type){
+    case 'timing':
+      verdict = good
+        ? name + '님, 움직일 시기는 ' + copula(whenOpen) + '. ' + F('i') + ' 정방향으로 서 있어서 그때까지 준비만 끝내면 흐름이 열립니다.'
+        : '지금 바로 움직이기보다 ' + whenHold + '까지는 지켜보는 편이 좋아요. ' + F('i') + ' 역방향이라 지금 밀수록 시간이 더 걸립니다.';
+      break;
+    case 'mind':
+      verdict = good
+        ? name + '님이 궁금해하시는 그 마음은 \'' + k1 + '\' 쪽으로 기울어 있어요. 아직 말로 다 드러나지 않았을 뿐입니다.'
+        : '지금 그 마음은 \'' + k1 + '\'보다 \'' + k2 + '\'에 가까워요. 확인하려 들수록 멀어지는 자리입니다.';
+      break;
+    case 'contact':
+      verdict = good
+        ? '먼저 연락은 해도 됩니다. 다만 카드의 ' + K('eul') + ' 재촉하지 않는, 두 문장 이내의 짧은 메시지로요.'
+        : '먼저 연락은 한 번 더 미루세요. 지금 보내면 답만 확인하고 마음이 더 흔들립니다.';
+      break;
+    case 'decision':
+      verdict = good
+        ? '결정은 움직이는 쪽으로 기울어 있어요. ' + whenOpen + ' 안에 기준 하나를 정해 정리하면 됩니다.'
+        : '결정은 아직 이릅니다. ' + whenHold + '까지 조건을 확인하고, 그 뒤에 한 번에 정리하세요.';
+      break;
+    case 'chance':
+      verdict = good
+        ? '가능성은 있습니다. ' + K('i') + ' 열려 있는 만큼, 조건 하나만 지키면 됩니다.'
+        : '가능성은 반반이고 지금은 ' + K('i') + ' 막혀 있어요. 서두르면 그 반반이 낮은 쪽으로 기웁니다.';
+      break;
+    case 'how':
+      verdict = good
+        ? '방법은 \'' + k1 + '\'에서 찾으세요. 크게 바꾸지 말고 한 번에 한 단계만 움직이면 됩니다.'
+        : '지금 필요한 건 새 방법이 아니라 ' + K('eul') + ' 정리하는 일이에요. 순서를 바꾸면 같은 행동도 결과가 달라집니다.';
+      break;
+    default:
+      verdict = good
+        ? '이 질문의 답은 \'' + k1 + '\' 쪽에 있어요. 방향은 이미 맞으니 그대로 유지하시면 됩니다.'
+        : '이 질문에는 ' + K('i') + ' 걸려 있어 바로 답이 나오지 않습니다. 조건을 하나 바꿔야 풀립니다.';
+  }
+
+  /* --- 설명 --- */
+  const explain = [];
+  const frag = followFragment(state.question, 26);
+
+  explain.push((bonus ? '추가로 뽑은 ' : '') + '\'' + fName + '\'가 ' + orient + '으로 이 질문의 중심에 섰어요. ' +
+               (bonus ? '이 카드는 이번 질문에 대한 조언을 담당합니다. ' : face.body + ' ') +
+               lensOf(focus));
+
+  const uplift = Number(reading && reading.uplift) || 0;
+  const revCount = Number(reading && reading.revCount) || 0;
+  const initialVerdict = (reading && reading.verdict) || '';
+  const aligned = focus.reversed ? (revCount >= uplift) : (uplift >= revCount);
+  const chain = n > 1
+    ? '\'' + cards[0].card.ko + '\'에서 ' + josa('\'' + cards[n - 1].card.ko + '\'', 'ro') + ' 이어지던 흐름'
+    : '\'' + cards[0].card.ko + '\' 한 장의 흐름';
+
+  const alignedLine = aligned
+    ? pickBy(rng, ['같은 방향을 가리키고 있어요', '이번에도 같은 쪽을 가리킵니다', '처음 리딩의 결론을 뒤집지 않아요'])
+    : pickBy(rng, ['반대편에 서서 조건을 하나 붙입니다', '한 걸음 물러서라는 신호를 보냅니다', '방향은 같지만 속도를 늦추라고 말합니다']);
+
+  explain.push(name + '님 사연에서 ' + (frag ? '\'' + frag + '\'라고 하셨죠' : '말씀하신 고민이 있었죠') + '. 그때 ' + chain + '은 ' +
+               (initialVerdict ? josa('[' + initialVerdict + ']', 'ro') : '한 방향으로') + ' 읽혔는데, 이번 카드는 ' +
+               alignedLine + '.');
+
+  switch(type){
+    case 'timing':
+      explain.push(k1 + ' 기운이 살아 있는 동안에는 한 번만 움직이는 게 좋아요. ' + whenOpen +
+                   '까지는 확인과 준비에 쓰고, 그 안에서 연락·지원·만남 중 하나를 딱 한 번 실행하세요. 같은 일을 두세 번 반복하면 이 카드가 말한 흐름이 흐트러집니다.');
+      break;
+    case 'mind':
+      explain.push('마음은 캐물을수록 숨는 쪽으로 움직여요. 대신 ' + K('i') + ' 드러나는 장면을 한 번 만드는 쪽이 정확합니다. 말로 확인하는 대신, 만나서 어떤 표정이고 어떤 말을 먼저 꺼내는지 한 번만 보세요. 그 한 번이 열 번의 추측보다 낫습니다.');
+      break;
+    case 'contact':
+      explain.push('보낼 문장은 이렇게 짧게: "요즘 어떻게 지내? 문득 궁금해서." 답을 요구하지 않는 문장이어야 다음 대화가 열립니다. 길게 쓰면 상대는 답장을 미루고, 짧게 쓰면 답할 부담이 줄어요. ' +
+                   (good ? '지금 카드는 그 짧은 한 번을 허락하고 있습니다.' : '지금 카드는 그 한 번도 아직 이르다고 말합니다.'));
+      break;
+    case 'decision':
+      explain.push('기준을 셋으로 늘리면 결정은 미뤄집니다. \'돈·시간·사람\' 중 지금 가장 아쉬운 것 하나만 고르고, 그 기준에서 6개월 뒤 후회가 적은 쪽을 선택하세요. ' + K('i') + ' 이 선택의 열쇠예요.');
+      break;
+    case 'chance':
+      explain.push('가능성은 \'지금 상태\'의 가능성일 뿐이에요. 조건이 하나 바뀌면 숫자도 바뀝니다. 그래서 지금 할 일은 기다림이 아니라 내 쪽 조건을 하나 만드는 일입니다.');
+      break;
+    case 'how':
+      explain.push('순서를 이렇게 잡아 보세요. 먼저 오늘 안에 할 수 있는 가장 작은 한 가지를 정하고, 그 결과를 본 다음 두 번째를 정합니다. ' + K('eun') + ' 한 번에 하나씩 움직일 때 가장 잘 자랍니다.');
+      break;
+    default:
+      explain.push('이 질문에 답하려면 처음 사연에서 어느 부분이 가장 무거운지부터 정해야 해요. ' +
+                   (state.topics && state.topics.length ? '\'' + state.topics[0].topic + '\' 쪽' : '\'' + k1 + '\' 쪽') +
+                   '이 중심이라면, 그 한 가지에만 이번 주 시간을 쓰세요. 나머지는 잠시 내려놓아도 됩니다.');
+  }
+
+  if(history.length){
+    const prev = history[history.length - 1];
+    const prevQ = (prev && prev.question ? '\'' + followFragment(prev.question, 20) + '\'' : '이어서 물으셨던 것');
+    explain.push(pickBy(rng, [
+      '앞서 ' + prevQ + '라고 물으셨던 것과도 같은 뿌리예요. 두 질문의 답이 같은 카드에서 나온다면, 지금 손댈 곳은 하나뿐입니다.',
+      '조금 전 ' + prevQ + '라는 질문과 이어서 보면, 답이 같은 자리로 모입니다. 두 번 물으신 만큼 그 한 곳만 손대면 됩니다.',
+      '아까 ' + prevQ + '라고 하셨던 것도 같은 카드에서 나온 답이에요. 질문이 달라도 지금 열쇠는 하나입니다.'
+    ]));
+  }
+
+  /* --- 행동 팁 --- */
+  const tips = [];
+  switch(type){
+    case 'timing':
+      tips.push('달력에 움직일 날을 하나 정해 표시하고, 그날까지 준비는 하나씩만 끝내세요. ' + whenOpen + ' 안이면 충분합니다.');
+      tips.push('그 기간 안에 연락·지원·만남은 \'한 번\'만 실행하세요. 두 번째는 결과를 본 뒤에 정합니다.');
+      break;
+    case 'mind':
+      tips.push('상대의 말보다 행동을 3일만 기록해 보세요. 먼저 연락한 횟수와 답장까지 걸린 시간이면 충분합니다.');
+      tips.push('캐묻는 질문 대신, 두 문장 이내의 가벼운 안부를 한 번 보내세요.');
+      break;
+    case 'contact':
+      tips.push('메시지는 두 문장 이내로, 답을 요구하지 않는 문장으로 보내세요.');
+      tips.push('보낸 뒤 48시간은 다시 보내지 마세요. 답이 와도 그날은 대화만 하고 끊으세요.');
+      break;
+    case 'decision':
+      tips.push('기준 후보 \'돈·시간·사람\' 중 하나를 골라 종이에 적으세요.');
+      tips.push('두 선택지를 6개월 뒤 기준으로 비교하고, ' + whenOpen + '까지 결정일을 정하세요.');
+      break;
+    case 'chance':
+      tips.push('가능성을 올릴 조건 한 가지를 정해 이번 주 안에 실행하세요.');
+      tips.push('결과를 확인할 날짜를 미리 정해 두면 조급함이 줄어듭니다.');
+      break;
+    case 'how':
+      tips.push('오늘 할 수 있는 가장 작은 첫 단계 하나만 정하세요.');
+      tips.push('두 번째 단계는 첫 단계 결과를 본 뒤에 정하세요.');
+      break;
+    default:
+      tips.push('처음 사연에서 가장 무거운 문장 하나를 그대로 적어 보세요. 그 문장이 이번 질문의 답입니다.');
+      tips.push('이번 주에는 그 한 가지에만 시간을 정해 쓰고, 나머지는 잠시 미뤄 두세요.');
+  }
+  if(face.advice) tips.push(face.advice);
+
+  /* --- 복사용 텍스트 --- */
+  const reply = [];
+  reply.push('🔮 ' + name + '님의 추가 질문 답변');
+  reply.push('');
+  reply.push('💬 ' + (question || '추가 질문'));
+  reply.push('');
+  if(bonus){
+    reply.push('🃏 추가로 뽑은 조언 카드 — ' + fName + ' (' + orient + ') · ' + keys.join(' · '));
+    reply.push('');
+  }
+  reply.push('[결론 한 줄]');
+  reply.push(verdict);
+  reply.push('');
+  reply.push('[설명]');
+  explain.forEach(function(p){ reply.push(p); reply.push(''); });
+  reply.push('[행동 팁]');
+  tips.forEach(function(t, i){ reply.push((i + 1) + '. ' + t); });
+  reply.push('');
+  reply.push('※ 본 답변은 참고용이며, 의료·법률·투자 판단을 대신하지 않습니다.');
+
+  return {
+    question: question,
+    mode: bonus ? 'bonus' : 'same',
+    bonus: bonus,
+    verdict: verdict,
+    explain: explain,
+    tips: tips,
+    builtin: true,
+    aiLabel: '',
+    replyText: reply.join('\n')
+  };
+}
+
+/* ---------- AI 프롬프트: 추가 질문 ---------- */
+function buildFollowUpPrompt(state, reading, opts){
+  const o = opts || {};
+  const area = AREAS[state.area] || AREAS.general;
+  const spread = SPREADS[state.spread] || SPREADS.ppf;
+  const name = state.name || '고객';
+  const bonus = o.bonus || null;
+  const history = o.history || [];
+  const user = [];
+
+  user.push('[고객]');
+  user.push('이름: ' + name + (state.gender ? ' (' + state.gender + ')' : ''));
+  if(state.birth) user.push('생년월일: ' + state.birth);
+  user.push('상담 분야: ' + area.label);
+  user.push('');
+  user.push('[처음 사연]');
+  user.push(state.question ? '「' + state.question + '」' : '(사연 없음 — 아래 카드로만 근거를 뽑습니다)');
+  user.push('');
+  user.push('[처음 뽑힌 카드]');
+  (state.cards || []).forEach(function(c, i){
+    const pos = spread.positions[i] || { label: '카드 ' + (i + 1) };
+    const f = c.card[c.reversed ? 'rev' : 'up'];
+    user.push((i + 1) + '. ' + pos.label + ' — ' + c.card.ko + ' (' + (c.reversed ? '역방향' : '정방향') + ')');
+    user.push('   · 의미: ' + f.body);
+    user.push('   · 키워드: ' + f.keys.join(', '));
+  });
+  user.push('');
+  user.push('[처음 리딩의 결론]');
+  user.push('[' + ((reading && reading.verdict) || '') + '] ' + ((reading && reading.verdictWhy) || ''));
+  if(reading && reading.synthesis && reading.synthesis.length){
+    user.push('요약: ' + reading.synthesis.slice(0, 2).join(' '));
+  }
+  if(bonus){
+    const bf = bonus.card[bonus.reversed ? 'rev' : 'up'];
+    user.push('');
+    user.push('[추가로 뽑은 조언 카드]');
+    user.push(bonus.card.ko + ' (' + (bonus.reversed ? '역방향' : '정방향') + ') · ' + bf.keys.join(', '));
+    user.push('   · 의미: ' + bf.body);
+    user.push('   · 이 카드는 이번 추가 질문의 조언을 담당합니다. 상징을 반드시 한 번 이상 근거로 쓰세요.');
+  }
+  if(history.length){
+    user.push('');
+    user.push('[앞선 추가 질문과 답변] — 같은 고객에게 이어서 답하는 중입니다');
+    history.forEach(function(h, i){
+      user.push((i + 1) + ') 질문: ' + h.question);
+      const first = String(h.verdict || '').replace(/\s+/g, ' ').slice(0, 120);
+      if(first) user.push('   답변 요지: ' + first);
+    });
+    user.push('앞선 답변과 같은 말을 반복하지 말고, 이미 한 조언은 다시 시키지 않습니다.');
+  }
+  user.push('');
+  user.push('[이번 추가 질문]');
+  user.push('「' + String(o.question == null ? '' : o.question) + '」');
+  user.push('');
+  user.push('[작성 형식 — 소제목 세 개를 그대로 씁니다]');
+  user.push('[결론 한 줄]');
+  user.push('   질문에 대한 직접적인 답 한 문장. "상황에 따라" 같은 회피 표현 금지.');
+  user.push('[설명]');
+  user.push('   3~5문장. 처음 사연의 표현을 한 번 그대로 인용하고, 처음 카드 중 최소 1장' +
+            (bonus ? '과 추가 카드' : '') + '을 근거로 씁니다. 질문에 없는 주제로 넓히지 않습니다.');
+  user.push('[행동 팁]');
+  user.push('   2~3개를 1. 2. 3. 번호로. 이번 주 안에 실제로 할 수 있는 행동. 연락이라면 보낼 문장 예시를 따옴표로 넣습니다.');
+  user.push('   마지막 줄에 "※ 본 답변은 참고용입니다."');
+  user.push('');
+  user.push('[자체 점검] 첫 줄이 질문에 대한 답인가 / 사연 단어를 인용했는가 / 카드 상징이 근거로 들어갔는가 / 앞선 답변과 겹치지 않는가.');
+
+  const system = [
+    '당신은 20년 차 타로 상담가입니다. 이미 카드를 뽑아 첫 리딩을 보낸 고객이 이어서 추가 질문을 했습니다. 이번 답변은 그 첫 리딩의 연장입니다.',
+    '',
+    '[원칙]',
+    '- 첫 줄은 질문에 대한 답입니다. 인사나 "추가 질문 주셨네요", "카드를 다시 펼쳐보니" 같은 서론을 쓰지 않습니다.',
+    '- 카드를 새로 뽑지 않습니다. 이미 뽑힌 카드' + (bonus ? '와 추가 카드' : '') + '로만 근거를 만듭니다.',
+    '- 처음 사연의 표현을 그대로 한 번 인용하고, 그 표현을 카드 상징과 1:1로 연결합니다.',
+    '- 앞선 답변에서 이미 한 조언은 반복하지 않습니다. 같은 문장 구조도 쓰지 않습니다.',
+    '- 금지: "상황에 따라 다릅니다", "노력하면 좋아질 거예요", "마음먹기 나름", "시간이 약", "긍정적으로 생각해 보세요".',
+    '- 단정적 미래 예언, 협박, 불안 조장은 하지 않습니다. 대신 "지금 이렇게 하면 어느 쪽으로 기울는지"는 단정적으로 씁니다.',
+    '- 의료·법률·투자 판단은 전문가 확인 한 줄만 쓰고 해석하지 않습니다.',
+    '- 정중한 존댓말. 고객을 "' + name + '님"으로 부릅니다.',
+    '',
+    '[형식]',
+    '- 소제목은 [결론 한 줄], [설명], [행동 팁] 세 개만 씁니다.',
+    '- 마크다운 제목(#), 굵게(**), 글머리 기호(-)는 쓰지 않습니다.',
+    '- 이모지는 쓰지 않습니다. 문단은 2~3문장으로 짧게 끊습니다.',
+    '- 전체 400~700자.'
+  ].join('\n');
+
+  const userText = user.join('\n');
+  return { system: system, user: userText, full: '[SYSTEM]\n' + system + '\n\n[USER]\n' + userText };
+}
+
+/* ---------- AI 응답 → [결론 한 줄] / [설명] / [행동 팁] ---------- */
+function parseFollowAI(text){
+  const t = String(text == null ? '' : text)
+    .replace(/\r\n/g, '\n')
+    .replace(/\*\*/g, '')
+    .replace(/^#{1,3}\s*/gm, '')
+    .trim();
+  if(!t) return null;
+
+  function section(startRe, nextRes){
+    const m = t.match(startRe);
+    if(!m) return '';
+    const start = m.index + m[0].length;
+    let end = t.length;
+    for(let i = 0; i < nextRes.length; i++){
+      const rest = t.slice(start);
+      const mm = rest.match(nextRes[i]);
+      if(mm && (start + mm.index) < end) end = start + mm.index;
+    }
+    return t.slice(start, end).trim();
+  }
+
+  const verdictRaw = section(/\[?\s*결론\s*한?\s*줄\s*\]?/, [/\[?\s*설명\s*\]/, /\[?\s*행동\s*팁\s*\]/]);
+  const explainRaw = section(/\[?\s*설명\s*\]/, [/\[?\s*행동\s*팁\s*\]/]);
+  const tipsRaw = section(/\[?\s*행동\s*팁\s*\]/, []);
+
+  const verdict = verdictRaw.replace(/^[-–:]\s*/, '').replace(/\n+/g, ' ').trim();
+  const explain = explainRaw
+    ? explainRaw.split(/\n+/).map(function(l){ return l.replace(/^[-•*]\s*/, '').replace(/^\s*\d+[.)]\s*/, '').trim(); }).filter(Boolean)
+    : [];
+  const tips = tipsRaw
+    ? tipsRaw.split(/\n+/)
+        .map(function(l){ return l.replace(/^\s*\d+[.)]\s*/, '').replace(/^[-•*]\s*/, '').trim(); })
+        .filter(function(l){ return l && !/^※/.test(l) && !/참고용/.test(l); })
+    : [];
+
+  if(!verdict && !explain.length && !tips.length) return null;
+  return { verdict: verdict, explain: explain, tips: tips };
+}
+
+/* ---------- AI 응답 → 답변 카드 데이터 ---------- */
+function buildFollowUpAIEntry(state, reading, opts, aiText, aiLabel){
+  const o = opts || {};
+  const question = String(o.question == null ? '' : o.question).trim();
+  const bonus = o.bonus || null;
+  const label = aiLabel || 'AI';
+  const clean = String(aiText == null ? '' : aiText)
+    .replace(/\*\*/g, '')
+    .replace(/^#{1,3}\s*/gm, '')
+    .trim();
+  const parsed = parseFollowAI(clean);
+  const verdict = parsed ? parsed.verdict : '';
+  const explain = (parsed && parsed.explain.length)
+    ? parsed.explain
+    : (verdict ? [] : clean.split(/\n\s*\n/).map(function(b){ return b.trim(); }).filter(Boolean));
+  const tips = parsed ? parsed.tips : [];
+
+  const reply = [];
+  reply.push('🔮 ' + (state.name || '고객') + '님의 추가 질문 답변');
+  reply.push('');
+  reply.push('💬 ' + (question || '추가 질문'));
+  reply.push('');
+  if(bonus){
+    const bf = bonus.card[bonus.reversed ? 'rev' : 'up'];
+    reply.push('🃏 추가로 뽑은 조언 카드 — ' + bonus.card.ko + ' (' + (bonus.reversed ? '역방향' : '정방향') + ') · ' + bf.keys.join(' · '));
+    reply.push('');
+  }
+  reply.push(clean);
+  if(clean.indexOf('참고용') === -1){
+    reply.push('');
+    reply.push('※ 본 답변은 참고용이며, 의료·법률·투자 판단을 대신하지 않습니다.');
+  }
+
+  return {
+    question: question,
+    mode: bonus ? 'bonus' : 'same',
+    bonus: bonus,
+    verdict: verdict,
+    explain: explain,
+    tips: tips,
+    builtin: false,
+    aiLabel: label,
+    replyText: reply.join('\n')
+  };
+}
+
+/* ---------- 추가 카드 배지 ---------- */
+function bonusCardHTML(bonus){
+  if(!bonus || !bonus.card) return '';
+  const face = bonus.card[bonus.reversed ? 'rev' : 'up'];
+  const parts = [];
+  parts.push('<div class="bonus-wrap">');
+  parts.push('<div class="bonus-mini' + (bonus.reversed ? ' rev' : '') + '"><div class="card-art">');
+  parts.push('<span class="numeral">' + escHTML(bonus.card.num) + '</span>');
+  parts.push('<span class="card-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' + ICONS[bonus.card.icon] + '</svg></span>');
+  parts.push('<div class="card-name"><div class="ko">' + escHTML(bonus.card.ko) + '</div></div>');
+  parts.push('</div></div>');
+  parts.push('<div class="bonus-meta">');
+  parts.push('<span class="fq-label">추가로 뽑은 조언 카드</span>');
+  parts.push('<p class="bonus-title">' + escHTML(bonus.card.ko) + ' <em>(' + (bonus.reversed ? '역방향' : '정방향') + ')</em></p>');
+  parts.push('<p class="bonus-keys">' + escHTML((face.keys || []).join(' · ')) + '</p>');
+  parts.push('<p class="bonus-body">' + escHTML(face.body) + '</p>');
+  parts.push('</div></div>');
+  return parts.join('');
+}
+
+/* ---------- 추가 질문 답변 카드 HTML ---------- */
+function followAnswerHTML(entry, index){
+  const e = entry || {};
+  const idx = (typeof index === 'number') ? index : 0;
+  const parts = [];
+  parts.push('<article class="fq-item" data-idx="' + idx + '">');
+  parts.push('<div class="fq-q"><span class="fq-badge">Q' + (idx + 1) + '</span><p>' + escHTML(e.question || '') + '</p></div>');
+  if(e.bonus) parts.push(bonusCardHTML(e.bonus));
+  else parts.push('<p class="fq-mode">🃏 처음 뽑은 카드의 흐름 그대로 이어서 답했어요</p>');
+  if(!e.builtin && e.aiLabel) parts.push('<p class="fq-mode">✨ ' + escHTML(e.aiLabel) + ' 생성</p>');
+
+  parts.push('<div class="fq-a">');
+  if(e.verdict){
+    parts.push('<div class="fq-verdict"><span class="fq-label">결론 한 줄</span><p>' + escHTML(e.verdict) + '</p></div>');
+  }
+  if(e.explain && e.explain.length){
+    parts.push('<div class="fq-explain"><span class="fq-label">설명</span>');
+    e.explain.forEach(function(p){ parts.push('<p>' + escHTML(p) + '</p>'); });
+    parts.push('</div>');
+  }
+  if(e.tips && e.tips.length){
+    parts.push('<span class="fq-label">행동 팁</span><ul class="fq-tips">');
+    e.tips.forEach(function(t, i){
+      parts.push('<li><span class="no">' + String(i + 1).padStart(2, '0') + '</span><span>' + escHTML(t) + '</span></li>');
+    });
+    parts.push('</ul>');
+  }
+  if(e.metaNote) parts.push('<p class="disclaimer">' + escHTML(e.metaNote) + '</p>');
+  parts.push('</div>');
+
+  parts.push('<div class="fq-foot">');
+  parts.push('<button type="button" class="btn mini fq-copy" data-idx="' + idx + '">📋 답변 복사하기</button>');
+  parts.push('<span class="fq-hint">카톡·크몽에 그대로 붙여넣으세요</span>');
+  parts.push('</div>');
+  parts.push('</article>');
+  return parts.join('\n');
+}
+
+/* ---------- 추가 질문 패널 ---------- */
+function followPanelHTML(){
+  const parts = [];
+  parts.push('<section class="followup" id="followPanel">');
+  parts.push('<div class="followup-head"><h3>💬 추가 질문 이어서 답변하기</h3>');
+  parts.push('<p>이미 뽑은 카드는 그대로 두고, 고객이 이어서 물어온 질문에 바로 보낼 답변을 만들어 드려요. 몇 번이든 이어서 물어볼 수 있습니다.</p></div>');
+  parts.push('<div class="fq-list" id="fqList"></div>');
+  parts.push('<div class="fq-form">');
+  parts.push('<label class="field" for="followQuestion"><span class="field-label">추가 질문 <span class="opt">고객이 이어서 물어본 내용</span></span>');
+  parts.push('<textarea id="followQuestion" rows="3" maxlength="400" placeholder="예) 그럼 제가 먼저 연락하는 게 좋을까요? 언제쯤이 좋을까요?"></textarea></label>');
+  parts.push('<div class="fq-chips">');
+  FOLLOW_EXAMPLES.forEach(function(t, i){
+    parts.push('<button type="button" class="fq-chip" data-fq="' + i + '">' + escHTML(t) + '</button>');
+  });
+  parts.push('</div>');
+  parts.push('<div class="fmode-row" role="radiogroup" aria-label="답변 방식">');
+  parts.push('<button type="button" class="fmode active" data-fmode="same" aria-pressed="true"><b>🃏 기존 카드 흐름으로 답변</b><small>처음 뽑은 카드 그대로</small></button>');
+  parts.push('<button type="button" class="fmode" data-fmode="bonus" aria-pressed="false"><b>✨ 조언 카드 1장 더 뽑고 답변</b><small>새 카드 1장을 더해 더 구체적으로</small></button>');
+  parts.push('</div>');
+  parts.push('<button type="button" class="btn primary" id="followAsk"><span class="btn-ico" aria-hidden="true">💬</span> 추가 질문 답변 받기</button>');
+  parts.push('<p class="status" id="followStatus" role="status" aria-live="polite"></p>');
+  parts.push('</div>');
+  parts.push('</section>');
   return parts.join('\n');
 }
 
@@ -1803,7 +2426,12 @@ const TarotCore = {
   drawCards: drawCards, buildReading: buildReading, buildPrompt: buildPrompt,
   buildResultHTML: buildResultHTML, buildAIResultHTML: buildAIResultHTML,
   normalizeState: normalizeState, extractTopics: extractTopics, lifePathNumber: lifePathNumber,
-  splitAIText: splitAIText, escHTML: escHTML
+  splitAIText: splitAIText, escHTML: escHTML,
+  FOLLOW_EXAMPLES: FOLLOW_EXAMPLES, classifyFollow: classifyFollow,
+  buildFollowUp: buildFollowUp, buildFollowUpPrompt: buildFollowUpPrompt,
+  buildFollowUpAIEntry: buildFollowUpAIEntry, parseFollowAI: parseFollowAI,
+  followAnswerHTML: followAnswerHTML, followPanelHTML: followPanelHTML,
+  bonusCardHTML: bonusCardHTML
 };
 if(typeof window !== 'undefined'){ window.TarotCore = TarotCore; }
 if(typeof globalThis !== 'undefined'){ globalThis.TarotCore = TarotCore; }
@@ -1987,7 +2615,8 @@ function closestIn(node, sel){
   'use strict';
 
   var TAP_TARGET = '.chip,.example-btn,#drawBtn,#saveSettings,#clearKey,#jumpSettings,' +
-                   '#copyReply,#copyPromptBtn,#copyPrompt2,#redoReading';
+                   '#copyReply,#copyPromptBtn,#copyPrompt2,#redoReading,' +
+                   '#followAsk,.fq-chip,.fmode,.fq-copy';
 
   var LS_KEY = 'aitarot_api_key';
   var LS_MODEL = 'aitarot_model';
@@ -2597,7 +3226,7 @@ function closestIn(node, sel){
         var aiName = provider === 'openai' ? 'GPT' : 'Gemini';
 
         if(!key){
-          current = { state: state, reading: reading, mode: 'local', aiText: '' };
+          current = { state: state, reading: reading, mode: 'local', aiText: '', follow: newFollowState() };
           showResult(TarotCore.buildResultHTML(state, reading));
           finish('내장 엔진으로 해설을 완성했어요. 답장을 복사해 고객에게 보내 보세요.', 'ok');
           return;
@@ -2607,11 +3236,11 @@ function closestIn(node, sel){
         var prompt = TarotCore.buildPrompt(state);
         var request = (provider === 'openai') ? callOpenAI(key, model, prompt) : callGemini(key, model, prompt);
         request.then(function(aiText){
-          current = { state: state, reading: reading, mode: 'ai', aiText: aiText };
+          current = { state: state, reading: reading, mode: 'ai', aiText: aiText, follow: newFollowState() };
           showResult(TarotCore.buildAIResultHTML(state, reading, aiText, '', aiName));
           finish(aiName + ' 해설을 완성했어요. 마음에 안 드는 문장은 자유롭게 다듬어 보세요.', 'ok');
         }).catch(function(err){
-          current = { state: state, reading: reading, mode: 'local', aiText: '' };
+          current = { state: state, reading: reading, mode: 'local', aiText: '', follow: newFollowState() };
           showResult(TarotCore.buildResultHTML(state, reading));
           var reason = (err && err.name === 'AbortError') ? '응답 시간이 초과됐어요' : ((err && err.message) || '알 수 없는 오류');
           finish(aiName + ' 호출에 실패해 내장 엔진으로 대신 해설했어요. (' + reason + ')', 'error');
@@ -2629,6 +3258,157 @@ function closestIn(node, sel){
     try{ if(el.drawBtn) el.drawBtn.disabled = false; }catch(e){}
     setStatus(msg, type);
     try{ if(el.shuffle) el.shuffle.hidden = true; }catch(e){}
+  }
+
+
+  /* ---------- 추가 질문 (v4) ---------- */
+  function followEl(id){ try{ return document.getElementById(id); }catch(e){ return null; } }
+
+  function setFollowStatus(msg, type){
+    var node = followEl('followStatus');
+    if(!node) return;
+    try{
+      node.textContent = msg || '';
+      node.className = 'status' + (type ? ' ' + type : '');
+    }catch(e){}
+  }
+
+  function newFollowState(){
+    return { history: [], bonusIds: [], mode: 'same', busy: false };
+  }
+
+  function setFollowMode(mode){
+    if(!current || !current.follow) return;
+    current.follow.mode = (mode === 'bonus') ? 'bonus' : 'same';
+    try{
+      var nodes = document.querySelectorAll('.fmode');
+      for(var i = 0; i < nodes.length; i++){
+        var on = nodes[i].getAttribute('data-fmode') === current.follow.mode;
+        if(on) nodes[i].classList.add('active'); else nodes[i].classList.remove('active');
+        nodes[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+    }catch(e){}
+  }
+
+  function fillFollowExample(idx){
+    var txt = TarotCore.FOLLOW_EXAMPLES[idx] || '';
+    var ta = followEl('followQuestion');
+    if(!ta || !txt) return;
+    try{ ta.value = txt; ta.focus(); }catch(e){}
+    setFollowStatus('예시 질문을 넣었어요. 그대로 눌러도 되고, 고객 문장으로 고쳐도 됩니다.', '');
+  }
+
+  /* 처음 3장에 없던 카드 1장 (앞서 추가로 뽑은 카드도 제외) */
+  function drawBonusCard(state, usedIds){
+    var used = {};
+    (state.cards || []).forEach(function(c){ try{ used[c.card.id] = true; }catch(e){} });
+    (usedIds || []).forEach(function(id){ used[id] = true; });
+    var pool = [];
+    var all = (TarotCore.CARDS || []);
+    for(var i = 0; i < all.length; i++){ if(!used[all[i].id]) pool.push(all[i]); }
+    if(!pool.length) return null;
+    return { card: pool[Math.floor(Math.random() * pool.length)], reversed: Math.random() < 0.5 };
+  }
+
+  function appendFollowAnswer(entry){
+    if(!current || !current.follow) return;
+    var list = followEl('fqList');
+    if(!list) return;
+    var idx = current.follow.history.length;
+    var html = TarotCore.followAnswerHTML(entry, idx);
+    var holder = document.createElement('div');
+    holder.innerHTML = html;
+    var node = holder.firstElementChild || holder.firstChild;
+    if(!node) return;
+    list.appendChild(node);
+    current.follow.history.push(entry);
+    var ta = followEl('followQuestion');
+    if(ta) ta.value = '';
+    try{
+      setTimeout(function(){
+        if(node && node.scrollIntoView){
+          try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+          catch(e){ node.scrollIntoView(); }
+        }
+      }, 90);
+    }catch(e){}
+  }
+
+  function askFollowUp(){
+    if(!current || !current.reading || !current.follow) return;
+    var f = current.follow;
+    if(f.busy) return;
+
+    var ta = followEl('followQuestion');
+    var q = ta ? String(ta.value || '').replace(/^\s+|\s+$/g, '') : '';
+    if(!q){
+      setFollowStatus('추가 질문을 먼저 적어 주세요.', 'error');
+      try{ if(ta) ta.focus(); }catch(e){}
+      return;
+    }
+    if(q.length > 400) q = q.slice(0, 400);
+
+    var mode = (f.mode === 'bonus') ? 'bonus' : 'same';
+    var bonus = null;
+    if(mode === 'bonus'){
+      bonus = drawBonusCard(current.state, f.bonusIds);
+      if(bonus) f.bonusIds.push(bonus.card.id);
+      else mode = 'same';
+    }
+
+    var provider = currentProvider();
+    var key = provider === 'openai' ? openaiKeyValue() : geminiKeyValue();
+    var model = provider === 'openai' ? openaiModelValue() : geminiModelValue();
+    var aiName = provider === 'openai' ? 'GPT' : 'Gemini';
+
+    f.busy = true;
+    try{ var btn = followEl('followAsk'); if(btn) btn.disabled = true; }catch(e){}
+    setFollowStatus(key
+      ? aiName + '가 이어서 답변을 쓰고 있어요… (보통 5~15초)'
+      : '카드를 다시 읽고 답변을 쓰고 있어요…', '');
+
+    var opts = { question: q, bonus: bonus, history: f.history.slice(), index: f.history.length };
+    var stateRef = current.state;
+    var readingRef = current.reading;
+
+    function done(entry){
+      f.busy = false;
+      try{ var b = followEl('followAsk'); if(b) b.disabled = false; }catch(e){}
+      appendFollowAnswer(entry);
+      setFollowStatus('답변을 추가했어요. 복사해서 그대로 보내 보세요.', 'ok');
+    }
+
+    function fallback(err){
+      var entry = TarotCore.buildFollowUp(stateRef, readingRef, opts);
+      if(err){
+        var reason = (err && err.name === 'AbortError') ? '응답 시간이 초과됐어요' : ((err && err.message) || '알 수 없는 오류');
+        entry.metaNote = aiName + ' 호출에 실패해 내장 엔진으로 답했어요. (' + reason + ')';
+      }
+      done(entry);
+    }
+
+    if(!key){ fallback(null); return; }
+
+    var prompt;
+    try{ prompt = TarotCore.buildFollowUpPrompt(stateRef, readingRef, opts); }
+    catch(e){ fallback(null); return; }
+
+    var request = (provider === 'openai') ? callOpenAI(key, model, prompt) : callGemini(key, model, prompt);
+    request.then(function(text){
+      var entry;
+      try{ entry = TarotCore.buildFollowUpAIEntry(stateRef, readingRef, opts, text, aiName); }
+      catch(e){ fallback(e); return; }
+      done(entry);
+    }).catch(function(err){
+      fallback(err);
+    });
+  }
+
+  function copyFollowAnswer(idx){
+    if(!current || !current.follow) return;
+    var entry = current.follow.history[idx];
+    if(!entry){ toast('복사할 답변이 없어요'); return; }
+    copyText(entry.replyText, '답변');
   }
 
   /* ---------- 탭 라우팅 ---------- */
@@ -2674,6 +3454,22 @@ function closestIn(node, sel){
     }
     if(matchesSel(node, '.example-btn')){
       fillExample(parseInt(node.getAttribute('data-example'), 10) || 0);
+      return;
+    }
+    if(matchesSel(node, '.fq-chip')){
+      fillFollowExample(parseInt(node.getAttribute('data-fq'), 10) || 0);
+      return;
+    }
+    if(matchesSel(node, '.fmode')){
+      setFollowMode(node.getAttribute('data-fmode'));
+      return;
+    }
+    if(matchesSel(node, '.fq-copy')){
+      copyFollowAnswer(parseInt(node.getAttribute('data-idx'), 10) || 0);
+      return;
+    }
+    if(id === 'followAsk'){
+      askFollowUp();
       return;
     }
     if(id === 'drawBtn'){
